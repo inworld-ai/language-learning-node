@@ -18,7 +18,7 @@ import {
   ProcessContext,
   RemoteTTSNode,
 } from '@inworld/runtime/graph';
-import { getLanguageConfig } from '../config/languages.js';
+import { getLanguageConfig, getSupportedLanguageCodes } from '../config/languages.js';
 import { serverConfig } from '../config/server.js';
 import { graphLogger as logger } from '../utils/logger.js';
 
@@ -39,11 +39,9 @@ class TextExtractorNode extends CustomNode {
 /**
  * Creates a simple TTS graph for pronouncing words
  * RemoteTTSNode accepts String directly as input
- * Language is hardcoded to Spanish
  */
 function createSimpleTTSGraph(languageCode: string): Graph {
-  // Language is hardcoded to Spanish, ignore parameter
-  const langConfig = getLanguageConfig('es');
+  const langConfig = getLanguageConfig(languageCode);
 
   logger.info(
     {
@@ -55,12 +53,12 @@ function createSimpleTTSGraph(languageCode: string): Graph {
   );
 
   const textExtractorNode = new TextExtractorNode({
-    id: 'simple-tts-text-extractor',
+    id: `simple-tts-text-extractor-${languageCode}`,
   });
 
   // RemoteTTSNode accepts String directly as input
   const ttsNode = new RemoteTTSNode({
-    id: 'simple-tts-node',
+    id: `simple-tts-node-${languageCode}`,
     speakerId: langConfig.ttsConfig.speakerId,
     modelId: langConfig.ttsConfig.modelId,
     sampleRate: serverConfig.audio.ttsSampleRate,
@@ -85,17 +83,38 @@ function createSimpleTTSGraph(languageCode: string): Graph {
   return graphBuilder.build();
 }
 
-// Cache for simple TTS graph (always Spanish)
-let simpleTTSGraph: Graph | null = null;
+// Cache for simple TTS graphs per language
+const simpleTTSGraphs = new Map<string, Graph>();
 
 /**
- * Get or create a simple TTS graph (always Spanish)
+ * Initialize TTS graphs for all supported languages
+ */
+export function initializeTTSGraphs(): void {
+  const languageCodes = getSupportedLanguageCodes();
+  
+  logger.info({ languageCount: languageCodes.length }, 'initializing_tts_graphs');
+  
+  for (const languageCode of languageCodes) {
+    if (!simpleTTSGraphs.has(languageCode)) {
+      logger.info({ languageCode }, 'creating_tts_graph');
+      simpleTTSGraphs.set(languageCode, createSimpleTTSGraph(languageCode));
+    }
+  }
+  
+  logger.info(
+    { graphCount: simpleTTSGraphs.size },
+    'tts_graphs_initialized'
+  );
+}
+
+/**
+ * Get TTS graph for a specific language
  */
 export function getSimpleTTSGraph(languageCode: string): Graph {
-  // Language is hardcoded to Spanish, ignore parameter
-  if (!simpleTTSGraph) {
-    logger.info({ languageCode: 'es' }, 'creating_simple_tts_graph');
-    simpleTTSGraph = createSimpleTTSGraph('es');
+  // If graph doesn't exist, create it (fallback for new languages)
+  if (!simpleTTSGraphs.has(languageCode)) {
+    logger.info({ languageCode }, 'creating_tts_graph_on_demand');
+    simpleTTSGraphs.set(languageCode, createSimpleTTSGraph(languageCode));
   }
-  return simpleTTSGraph;
+  return simpleTTSGraphs.get(languageCode)!;
 }

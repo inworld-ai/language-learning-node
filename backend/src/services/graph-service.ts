@@ -16,7 +16,7 @@ import {
 } from '../graphs/conversation-graph.js';
 import { getFlashcardGraph } from '../graphs/flashcard-graph.js';
 import { getResponseFeedbackGraph } from '../graphs/response-feedback-graph.js';
-// Language is hardcoded to Spanish
+import { initializeTTSGraphs } from '../graphs/simple-tts-graph.js';
 import { serverLogger as logger } from '../utils/logger.js';
 import { connections } from './state.js';
 
@@ -43,6 +43,11 @@ export async function initializeGraph(): Promise<void> {
     defaultLanguageCode: 'es', // Always Spanish
   });
   logger.info('conversation_graph_initialized');
+
+  // Initialize TTS graphs for all supported languages
+  logger.info('initializing_tts_graphs');
+  initializeTTSGraphs();
+  logger.info('tts_graphs_initialized');
 }
 
 export async function exportGraphConfigs(): Promise<void> {

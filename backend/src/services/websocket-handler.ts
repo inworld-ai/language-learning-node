@@ -578,7 +578,6 @@ async function handleTTSPronounce(
   message: { text?: string; languageCode?: string }
 ): Promise<void> {
   const text = message.text;
-  const languageCode = 'es'; // Always Spanish
 
   if (typeof text !== 'string' || text.trim().length === 0) {
     ws.send(
@@ -599,6 +598,15 @@ async function handleTTSPronounce(
   }
 
   try {
+    // Get language from connection manager (current conversation language)
+    const connectionManager = connectionManagers.get(connectionId);
+    const languageCode = connectionManager?.getLanguageCode() || message.languageCode || DEFAULT_LANGUAGE_CODE;
+    
+    logger.debug(
+      { connectionId, languageCode, textLength: text.length },
+      'tts_pronounce_starting'
+    );
+
     const graph = getSimpleTTSGraph(languageCode);
     const executionResult = await graph.start({ text: text.trim() });
 
