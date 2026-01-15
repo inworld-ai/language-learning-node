@@ -41,7 +41,7 @@ export class TTSRequestBuilderNode extends CustomNode {
   ): GraphTypes.TTSRequest {
     const sessionId = context.getDatastore().get('sessionId') as string;
 
-    // For long-running graphs, read voiceId from connection state at processing time
+    // Get voice from connection state (which is updated when language changes)
     const connection = this.connections[sessionId];
 
     // Get voice from state, or fall back to language config, or default

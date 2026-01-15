@@ -127,17 +127,19 @@ export class MemoryProcessor {
   }
 
   /**
-   * Non-blocking memory creation (fire-and-forget)
-   * Call this without awaiting to not block the conversation
+   * Asynchronous Memory creation 
    */
-  createMemoryAsync(
+  async createMemoryAsync(
     userId: string,
     messages: Array<{ role: string; content: string }>
-  ): void {
-    // Fire and forget - don't await in calling code
-    this.processMemoryCreation(userId, messages).catch((error) => {
+  ): Promise<void> {
+    // Wait for memory creation to complete
+    try {
+      await this.processMemoryCreation(userId, messages);
+    } catch (error) {
       logger.error({ err: error }, 'memory_creation_failed');
-    });
+      throw error; // Re-throw so caller can handle it
+    }
   }
 
   /**

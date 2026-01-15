@@ -15,6 +15,7 @@ export class Storage {
   private flashcardsKey = 'aprende-flashcards'; // Legacy per-language flashcards
   private flashcardsConversationKeyPrefix = 'aprende-flashcards-conv-'; // + conversationId
   private languageKey = 'aprende-language';
+  private uiLanguageKey = 'aprende-ui-language';
 
   // Language preference methods
   getLanguage(): string {
@@ -31,6 +32,23 @@ export class Storage {
       localStorage.setItem(this.languageKey, languageCode);
     } catch (error) {
       console.error('Failed to save language to localStorage:', error);
+    }
+  }
+
+  getUiLanguage(): string {
+    try {
+      return localStorage.getItem(this.uiLanguageKey) || 'es';
+    } catch (error) {
+      console.error('Failed to load UI language from localStorage:', error);
+      return 'es';
+    }
+  }
+
+  saveUiLanguage(languageCode: string): void {
+    try {
+      localStorage.setItem(this.uiLanguageKey, languageCode);
+    } catch (error) {
+      console.error('Failed to save UI language to localStorage:', error);
     }
   }
 

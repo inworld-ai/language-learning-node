@@ -34,6 +34,11 @@ export class ConnectionManager {
   private languageCode: string;
   private languageConfig: LanguageConfig;
   private logger: ReturnType<typeof createSessionLogger>;
+  private conversationId: string | null = null;
+  private pendingFlashcardGeneration: Promise<void> | null = null;
+  private pendingFeedbackGeneration: Promise<void> | null = null;
+  private pendingMemoryGeneration: Promise<void> | null = null;
+  private isSwitchingConversation: boolean = false;
   private restartAttempts = 0;
   private readonly MAX_RESTART_ATTEMPTS = 3;
   private lastRestartTime = 0;
@@ -53,9 +58,11 @@ export class ConnectionManager {
       ) => Promise<void>)
     | null = null;
 
-  // Callback for memory creation (non-blocking, fire-and-forget)
+  // Callback for memory creation
   private memoryCallback:
-    | ((messages: Array<{ role: string; content: string }>) => void)
+    | ((
+        messages: Array<{ role: string; content: string }>
+      ) => Promise<void>)
     | null = null;
 
   // User ID for memory retrieval/creation
@@ -76,6 +83,7 @@ export class ConnectionManager {
     this.ws = ws;
     this.graphWrapper = graphWrapper;
     this.connections = connections;
+    // Default language is Spanish, but can be changed via conversation_switch
     this.languageCode = languageCode;
     this.languageConfig = getLanguageConfig(languageCode);
     this.multimodalStreamManager = new MultimodalStreamManager();
@@ -89,9 +97,10 @@ export class ConnectionManager {
         messages: [],
         userName: '',
         targetLanguage: this.languageConfig.name,
-        languageCode: languageCode,
+        languageCode: this.languageCode,
         voiceId: this.languageConfig.ttsConfig.speakerId,
         output_modalities: ['audio', 'text'],
+        conversationId: undefined,
       },
       multimodalStreamManager: this.multimodalStreamManager,
       onSpeechDetected: (interactionId) =>
@@ -301,6 +310,7 @@ export class ConnectionManager {
             this.sendToClient({
               type: 'transcription',
               text: transcription.trim(),
+              conversationId: this.conversationId,
               timestamp: Date.now(),
             });
           }
@@ -325,6 +335,7 @@ export class ConnectionManager {
             this.sendToClient({
               type: 'transcription',
               text: transcription.trim(),
+              conversationId: this.conversationId,
               timestamp: Date.now(),
             });
           }
@@ -353,6 +364,7 @@ export class ConnectionManager {
               this.sendToClient({
                 type: 'llm_response_chunk',
                 text: chunk.text,
+                conversationId: this.conversationId,
                 timestamp: Date.now(),
               });
             }
@@ -370,6 +382,7 @@ export class ConnectionManager {
               this.sendToClient({
                 type: 'llm_response_complete',
                 text: llmResponse.trim(),
+                conversationId: this.conversationId,
                 timestamp: Date.now(),
               });
             }
@@ -411,6 +424,12 @@ export class ConnectionManager {
                 );
               }
 
+              // Block audio during conversation switch
+              if (this.isSwitchingConversation) {
+                this.logger.debug('blocking_audio_during_conversation_switch');
+                continue;
+              }
+
               // Convert audio to base64 for WebSocket transmission
               // Use ttsSampleRate as fallback (not inputSampleRate which is for microphone input)
               const audioResult = this.convertAudioToBase64(chunk.audio);
@@ -423,6 +442,7 @@ export class ConnectionManager {
                     chunk.audio.sampleRate || serverConfig.audio.ttsSampleRate,
                   text: chunk.text || '',
                   isFirstChunk: isFirstChunk,
+                  conversationId: this.conversationId,
                   timestamp: Date.now(),
                 });
                 isFirstChunk = false;
@@ -430,24 +450,25 @@ export class ConnectionManager {
             }
           }
 
-          // Mark processing complete (even if interrupted)
-          this.markProcessingComplete();
-
           // Only send completion signals if not interrupted
           if (!wasInterrupted) {
-            // Send completion signal
-            this.logger.debug('tts_stream_complete');
-            this.sendToClient({
-              type: 'audio_stream_complete',
-              timestamp: Date.now(),
-            });
+            // Send completion signals
+            if (!this.isSwitchingConversation) {
+              this.logger.debug('tts_stream_complete');
+              this.sendToClient({
+                type: 'audio_stream_complete',
+                conversationId: this.conversationId,
+                timestamp: Date.now(),
+              });
 
-            // Send conversation update
-            this.sendToClient({
-              type: 'conversation_update',
-              messages: connection.state.messages,
-              timestamp: Date.now(),
-            });
+              // Send conversation update with conversationId
+              this.sendToClient({
+                type: 'conversation_update',
+                messages: connection.state.messages,
+                conversationId: this.conversationId,
+                timestamp: Date.now(),
+              });
+            }
 
             // Trigger flashcard, feedback, and memory generation after TTS completes
             this.triggerFlashcardGeneration();
@@ -456,6 +477,7 @@ export class ConnectionManager {
           } else {
             this.logger.debug('tts_interrupted_skipping_completion');
           }
+          this.markProcessingComplete();
         },
 
         // Handle errors
@@ -517,6 +539,7 @@ export class ConnectionManager {
       this.sendToClient({
         type: 'interrupt',
         reason: 'continuation_detected',
+        conversationId: this.conversationId,
         timestamp: Date.now(),
       });
     } else {
@@ -524,6 +547,7 @@ export class ConnectionManager {
       this.sendToClient({
         type: 'interrupt',
         reason: 'speech_start',
+        conversationId: this.conversationId,
         timestamp: Date.now(),
       });
     }
@@ -533,6 +557,7 @@ export class ConnectionManager {
       type: 'speech_detected',
       interactionId,
       data: { text: '' },
+      conversationId: this.conversationId,
       timestamp: Date.now(),
     });
   }
@@ -545,6 +570,7 @@ export class ConnectionManager {
       type: 'partial_transcript',
       text,
       interactionId,
+      conversationId: this.conversationId,
       timestamp: Date.now(),
     });
   }
@@ -600,6 +626,7 @@ export class ConnectionManager {
           type: 'conversation_rollback',
           removedCount,
           messages: messages,
+          conversationId: this.conversationId,
           timestamp: Date.now(),
         });
       }
@@ -681,9 +708,14 @@ export class ConnectionManager {
       content: m.content,
     }));
 
-    this.flashcardCallback(recentMessages).catch((error) => {
-      this.logger.error({ err: error }, 'flashcard_generation_trigger_error');
-    });
+    // Track pending flashcard generation
+    this.pendingFlashcardGeneration = this.flashcardCallback(recentMessages)
+      .catch((error) => {
+        this.logger.error({ err: error }, 'flashcard_generation_trigger_error');
+      })
+      .finally(() => {
+        this.pendingFlashcardGeneration = null;
+      });
   }
 
   /**
@@ -708,15 +740,21 @@ export class ConnectionManager {
       content: m.content,
     }));
 
-    this.feedbackCallback(recentMessages, lastUserMessage.content).catch(
-      (error) => {
+    // Track pending feedback generation
+    this.pendingFeedbackGeneration = this.feedbackCallback(
+      recentMessages,
+      lastUserMessage.content
+    )
+      .catch((error) => {
         this.logger.error({ err: error }, 'feedback_generation_trigger_error');
-      }
-    );
+      })
+      .finally(() => {
+        this.pendingFeedbackGeneration = null;
+      });
   }
 
   /**
-   * Trigger memory generation (non-blocking, fire-and-forget)
+   * Trigger memory generation
    * The callback handles turn counting and decides whether to create a memory
    */
   private triggerMemoryGeneration(): void {
@@ -730,8 +768,14 @@ export class ConnectionManager {
       content: m.content,
     }));
 
-    // Fire and forget - the callback is synchronous and handles async internally
-    this.memoryCallback(recentMessages);
+    // Track pending memory generation
+    this.pendingMemoryGeneration = this.memoryCallback(recentMessages)
+      .catch((error) => {
+        this.logger.error({ err: error }, 'memory_generation_trigger_error');
+      })
+      .finally(() => {
+        this.pendingMemoryGeneration = null;
+      });
   }
 
   // ============================================================
@@ -756,7 +800,9 @@ export class ConnectionManager {
   }
 
   setMemoryCallback(
-    callback: (messages: Array<{ role: string; content: string }>) => void
+    callback: (
+      messages: Array<{ role: string; content: string }>
+    ) => Promise<void>
   ): void {
     this.memoryCallback = callback;
   }
@@ -798,46 +844,25 @@ export class ConnectionManager {
   }
 
   /**
-   * Change language for this session
+   * Update language for this connection
    */
-  setLanguage(newLanguageCode: string): void {
-    if (this.languageCode === newLanguageCode) return;
+  setLanguage(languageCode: string): void {
+    if (this.languageCode === languageCode) return;
 
     this.logger.info(
-      { from: this.languageCode, to: newLanguageCode },
+      { from: this.languageCode, to: languageCode },
       'changing_language'
     );
 
-    this.languageCode = newLanguageCode;
-    this.languageConfig = getLanguageConfig(newLanguageCode);
+    this.languageCode = languageCode;
+    this.languageConfig = getLanguageConfig(languageCode);
 
     const connection = this.connections[this.sessionId];
     if (connection) {
-      // Always update the connection state to ensure synchronization
-      connection.state.languageCode = newLanguageCode;
+      connection.state.languageCode = languageCode;
       connection.state.targetLanguage = this.languageConfig.name;
       connection.state.voiceId = this.languageConfig.ttsConfig.speakerId;
-
-      this.logger.debug(
-        {
-          sessionId: this.sessionId,
-          languageCode: newLanguageCode,
-          targetLanguage: this.languageConfig.name,
-          voiceId: connection.state.voiceId,
-        },
-        'connection_state_language_updated'
-      );
-    } else {
-      this.logger.warn(
-        { sessionId: this.sessionId },
-        'connection_not_found_for_language_update'
-      );
     }
-
-    this.logger.info(
-      { language: this.languageConfig.name },
-      'language_changed'
-    );
   }
 
   /**
@@ -850,6 +875,157 @@ export class ConnectionManager {
       connection.state.interactionId = '';
     }
     this.logger.info('conversation_reset');
+  }
+
+  /**
+   * Load conversation history from client
+   * Called when switching to an existing conversation
+   */
+  loadConversationHistory(
+    messages: Array<{ role: string; content: string; timestamp?: string }>
+  ): void {
+    const connection = this.connections[this.sessionId];
+    if (!connection) {
+      this.logger.warn('connection_not_found_for_history_load');
+      return;
+    }
+
+    // Convert client messages to backend format
+    const chatMessages = messages.map((m, index) => ({
+      id: `msg_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`,
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+      timestamp: m.timestamp || new Date().toISOString(),
+    }));
+
+    connection.state.messages = chatMessages;
+    
+    this.logger.info(
+      { messageCount: chatMessages.length },
+      'conversation_history_loaded'
+    );
+  }
+
+  /**
+   * Wait for all pending operations to complete
+   * Used before switching conversations
+   */
+  async waitForPendingOperations(): Promise<void> {
+    // FIRST: Wait for graph processing to complete (isProcessingResponse becomes false)
+    // This ensures flashcard/feedback generation has been triggered before we check for them
+    if (this.isProcessingResponse) {
+      this.logger.info('waiting_for_graph_processing_to_complete');
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (!this.isProcessingResponse) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve();
+        }, 5000);
+      });
+      this.logger.info('graph_processing_completed');
+    }
+
+    // SECOND: After graph processing completes, check for pending flashcard/feedback/memory generation
+    // By this point, triggerFlashcardGeneration(), triggerFeedbackGeneration(), and triggerMemoryGeneration() have been called
+    const promises: Promise<void>[] = [];
+
+    if (this.pendingFlashcardGeneration) {
+      this.logger.info('waiting_for_flashcard_generation');
+      promises.push(this.pendingFlashcardGeneration);
+    }
+
+    if (this.pendingFeedbackGeneration) {
+      this.logger.info('waiting_for_feedback_generation');
+      promises.push(this.pendingFeedbackGeneration);
+    }
+
+    if (this.pendingMemoryGeneration) {
+      this.logger.info('waiting_for_memory_generation');
+      promises.push(this.pendingMemoryGeneration);
+    }
+
+    if (promises.length > 0) {
+      this.logger.info(
+        { pendingCount: promises.length },
+        'waiting_for_pending_operations'
+      );
+      await Promise.all(promises);
+      this.logger.info('pending_operations_completed');
+    }
+  }
+
+  /**
+   * Switch to a new conversation
+   * Waits for pending operations, then updates language, history, and conversationId
+   */
+  async switchConversation(
+    conversationId: string,
+    languageCode: string,
+    messages: Array<{ role: string; content: string; timestamp?: string }>
+  ): Promise<void> {
+    if (this.isSwitchingConversation) {
+      this.logger.warn('conversation_switch_already_in_progress');
+      return;
+    }
+
+    this.isSwitchingConversation = true;
+    this.logger.info(
+      { conversationId, languageCode, messageCount: messages.length },
+      'switching_conversation'
+    );
+
+    try {
+      // Wait for pending operations to complete
+      await this.waitForPendingOperations();
+
+      // Update language
+      const newLanguageConfig = getLanguageConfig(languageCode);
+      this.languageCode = languageCode;
+      this.languageConfig = newLanguageConfig;
+
+      // Update connection state
+      const connection = this.connections[this.sessionId];
+      if (connection) {
+        connection.state.languageCode = languageCode;
+        connection.state.targetLanguage = newLanguageConfig.name;
+        connection.state.voiceId = newLanguageConfig.ttsConfig.speakerId;
+        connection.state.conversationId = conversationId;
+
+        // Load conversation history
+        const chatMessages = messages.map((m, index) => ({
+          id: `msg_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`,
+          role: m.role as 'user' | 'assistant' | 'system',
+          content: m.content,
+          timestamp: m.timestamp || new Date().toISOString(),
+        }));
+
+        connection.state.messages = chatMessages;
+      }
+
+      // Update conversationId
+      this.conversationId = conversationId;
+
+      this.logger.info(
+        { conversationId, languageCode, messageCount: messages.length },
+        'conversation_switched'
+      );
+    } finally {
+      this.isSwitchingConversation = false;
+    }
+  }
+
+  /**
+   * Get current conversation ID
+   */
+  getConversationId(): string | null {
+    return this.conversationId;
   }
 
   /**

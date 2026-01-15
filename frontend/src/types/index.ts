@@ -132,6 +132,7 @@ export interface AppState {
   // Language
   currentLanguage: string;
   availableLanguages: Language[];
+  uiLanguage: string; // Language displayed in the UI selector (doesn't change when switching conversations)
 
   // Chat
   chatHistory: ChatMessage[];
@@ -159,6 +160,7 @@ export interface AppState {
   conversations: ConversationSummary[];
   currentConversationId: string | null;
   sidebarOpen: boolean;
+  switchingConversation: boolean;
 }
 
 // Outgoing WebSocket message

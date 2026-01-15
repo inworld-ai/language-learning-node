@@ -76,6 +76,7 @@ export class ConversationGraphWrapper {
       assemblyAIApiKey,
       defaultLanguageCode = DEFAULT_LANGUAGE_CODE,
     } = config;
+    // Use provided language code or default to Spanish
     const langConfig = getLanguageConfig(defaultLanguageCode);
     const postfix = `-lang-learning`;
 

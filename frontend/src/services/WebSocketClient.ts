@@ -198,9 +198,6 @@ export class WebSocketClient {
     [key: string]: unknown;
   }): void {
     switch (message.type) {
-      case 'transcript_update':
-        this.emit('transcript_update', (message.data as { text: string }).text);
-        break;
 
       case 'transcription':
         this.emit('transcription', {
@@ -318,6 +315,13 @@ export class WebSocketClient {
       case 'tts_pronounce_error':
         this.emit('tts_pronounce_error', {
           error: message.error,
+        });
+        break;
+
+      case 'conversation_ready':
+        this.emit('conversation_ready', {
+          conversationId: message.conversationId,
+          languageCode: message.languageCode,
         });
         break;
 

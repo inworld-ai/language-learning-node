@@ -16,7 +16,7 @@ import {
 } from '../graphs/conversation-graph.js';
 import { getFlashcardGraph } from '../graphs/flashcard-graph.js';
 import { getResponseFeedbackGraph } from '../graphs/response-feedback-graph.js';
-import { DEFAULT_LANGUAGE_CODE } from '../config/languages.js';
+// Language is hardcoded to Spanish
 import { serverLogger as logger } from '../utils/logger.js';
 import { connections } from './state.js';
 
@@ -40,7 +40,7 @@ export async function initializeGraph(): Promise<void> {
   graphWrapper = getConversationGraph({
     assemblyAIApiKey,
     connections,
-    defaultLanguageCode: DEFAULT_LANGUAGE_CODE,
+    defaultLanguageCode: 'es', // Always Spanish
   });
   logger.info('conversation_graph_initialized');
 }

@@ -13,7 +13,6 @@ import { FlashcardProcessor } from '../helpers/flashcard-processor.js';
 import { FeedbackProcessor } from '../helpers/feedback-processor.js';
 import { MemoryProcessor } from '../helpers/memory-processor.js';
 import {
-  getLanguageConfig,
   getSupportedLanguageCodes,
   DEFAULT_LANGUAGE_CODE,
 } from '../config/languages.js';
@@ -44,8 +43,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     logger.info({ connectionId }, 'websocket_connected');
 
-    // Default language is Spanish
-    const defaultLanguageCode = DEFAULT_LANGUAGE_CODE;
+    // Default language is Spanish, but can be changed via conversation_switch
+    const languageCode = DEFAULT_LANGUAGE_CODE;
 
     // Create connection manager (replaces AudioProcessor)
     const connectionManager = new ConnectionManager(
@@ -53,17 +52,17 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
       ws,
       graphWrapper,
       connections,
-      defaultLanguageCode
+      languageCode
     );
 
     // Create flashcard processor
-    const flashcardProcessor = new FlashcardProcessor(defaultLanguageCode);
+    const flashcardProcessor = new FlashcardProcessor(languageCode);
 
     // Create feedback processor
-    const feedbackProcessor = new FeedbackProcessor(defaultLanguageCode);
+    const feedbackProcessor = new FeedbackProcessor(languageCode);
 
     // Create memory processor
-    const memoryProcessor = new MemoryProcessor(defaultLanguageCode);
+    const memoryProcessor = new MemoryProcessor(languageCode);
 
     // Store processors
     connectionManagers.set(connectionId, connectionManager);
@@ -71,7 +70,7 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     feedbackProcessors.set(connectionId, feedbackProcessor);
     memoryProcessors.set(connectionId, memoryProcessor);
     connectionAttributes.set(connectionId, {
-      languageCode: defaultLanguageCode,
+      languageCode: languageCode,
     });
 
     // Set up flashcard generation callback
@@ -102,10 +101,12 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           userContext
         );
         if (flashcards.length > 0) {
+          const conversationId = connectionManager.getConversationId();
           ws.send(
             JSON.stringify({
               type: 'flashcards_generated',
               flashcards,
+              conversationId: conversationId || null,
             })
           );
         }
@@ -149,11 +150,13 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           );
 
           if (feedback) {
+            const conversationId = connectionManager.getConversationId();
             ws.send(
               JSON.stringify({
                 type: 'feedback_generated',
                 messageContent: currentTranscript,
                 feedback,
+                conversationId: conversationId || null,
               })
             );
           }
@@ -168,8 +171,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
       }
     );
 
-    // Set up memory generation callback (fire-and-forget)
-    connectionManager.setMemoryCallback((messages) => {
+    // Set up memory generation callback
+    connectionManager.setMemoryCallback(async (messages) => {
       if (isShuttingDown()) {
         return;
       }
@@ -186,8 +189,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
       memoryProcessor.incrementTurn();
 
       if (memoryProcessor.shouldCreateMemory()) {
-        // Fire and forget - createMemoryAsync handles errors internally
-        memoryProcessor.createMemoryAsync(userId, messages);
+        // Wait for memory creation to complete
+        await memoryProcessor.createMemoryAsync(userId, messages);
       }
     });
 
@@ -257,15 +260,11 @@ function handleMessage(
       // Reset backend state when switching conversations
       connectionManager.reset();
       flashcardProcessors.get(connectionId)?.reset();
-      // Clear language in connectionAttributes so set_language will always process
-      const attrs = connectionAttributes.get(connectionId);
-      if (attrs) {
-        delete attrs.languageCode;
-        connectionAttributes.set(connectionId, attrs);
-      }
       logger.info({ connectionId }, 'conversation_context_reset');
-    } else if (message.type === 'set_language') {
-      handleLanguageChange(connectionId, ws, connectionManager, message);
+    } else if (message.type === 'conversation_update') {
+      handleConversationUpdate(connectionId, connectionManager, message);
+    } else if (message.type === 'conversation_switch') {
+      handleConversationSwitch(connectionId, ws, connectionManager, message);
     } else if (message.type === 'user_context') {
       handleUserContext(connectionId, message);
     } else if (message.type === 'flashcard_clicked') {
@@ -285,83 +284,171 @@ function handleMessage(
   }
 }
 
-function handleLanguageChange(
+function handleConversationUpdate(
+  connectionId: string,
+  connectionManager: ConnectionManager,
+  message: {
+    data?: {
+      messages?: Array<{ role: string; content: string; timestamp?: string }>;
+    };
+    messages?: Array<{ role: string; content: string; timestamp?: string }>;
+  }
+): void {
+  // Handle both formats: { data: { messages: [...] } } and { messages: [...] }
+  const messages =
+    message.messages || message.data?.messages || (message.data as any)?.messages;
+
+  if (!messages || !Array.isArray(messages)) {
+    logger.debug(
+      { connectionId, hasData: !!message.data, hasMessages: !!message.messages },
+      'conversation_update_missing_or_invalid_messages'
+    );
+    return;
+  }
+
+  logger.info(
+    { connectionId, messageCount: messages.length },
+    'loading_conversation_history'
+  );
+
+  try {
+    connectionManager.loadConversationHistory(messages);
+    logger.info(
+      { connectionId, messageCount: messages.length },
+      'conversation_history_loaded'
+    );
+  } catch (error) {
+    logger.error(
+      { err: error, connectionId },
+      'failed_to_load_conversation_history'
+    );
+  }
+}
+
+async function handleConversationSwitch(
   connectionId: string,
   ws: WebSocket,
   connectionManager: ConnectionManager,
-  message: { languageCode?: string }
-): void {
-  const requestedCode = message.languageCode;
-  const supportedCodes = getSupportedLanguageCodes();
+  message: {
+    conversationId?: string;
+    languageCode?: string;
+    messages?: Array<{ role: string; content: string; timestamp?: string }>;
+    data?: {
+      conversationId?: string;
+      languageCode?: string;
+      messages?: Array<{ role: string; content: string; timestamp?: string }>;
+    };
+  }
+): Promise<void> {
+  const conversationId =
+    message.conversationId || message.data?.conversationId;
+  const requestedLanguageCode = message.languageCode || message.data?.languageCode;
+  const messages = message.messages || message.data?.messages;
 
-  let newLanguageCode = DEFAULT_LANGUAGE_CODE;
-  if (requestedCode && supportedCodes.includes(requestedCode)) {
-    newLanguageCode = requestedCode;
-  } else if (requestedCode) {
+  if (!conversationId || !requestedLanguageCode) {
+    logger.warn(
+      { connectionId, hasConversationId: !!conversationId, hasLanguageCode: !!requestedLanguageCode },
+      'conversation_switch_missing_required_fields'
+    );
+    ws.send(
+      JSON.stringify({
+        type: 'error',
+        message: 'Missing conversationId or languageCode',
+        timestamp: Date.now(),
+      })
+    );
+    return;
+  }
+
+  if (!messages || !Array.isArray(messages)) {
+    logger.warn({ connectionId }, 'conversation_switch_missing_messages');
+    ws.send(
+      JSON.stringify({
+        type: 'error',
+        message: 'Missing messages array',
+        timestamp: Date.now(),
+      })
+    );
+    return;
+  }
+
+  // Validate language code
+  const supportedCodes = getSupportedLanguageCodes();
+  const languageCode = supportedCodes.includes(requestedLanguageCode)
+    ? requestedLanguageCode
+    : DEFAULT_LANGUAGE_CODE;
+
+  if (requestedLanguageCode !== languageCode) {
     logger.warn(
       {
         connectionId,
-        invalidCode: requestedCode,
-        fallback: DEFAULT_LANGUAGE_CODE,
+        requestedCode: requestedLanguageCode,
+        fallback: languageCode,
       },
-      'invalid_language_code_using_default'
+      'invalid_language_code_using_fallback'
     );
   }
 
-  const attrs = connectionAttributes.get(connectionId) || {};
+  logger.info(
+    {
+      connectionId,
+      conversationId,
+      languageCode,
+      messageCount: messages.length,
+    },
+    'conversation_switch_requested'
+  );
 
-  if (attrs.languageCode !== newLanguageCode) {
-    logger.info(
-      { connectionId, from: attrs.languageCode, to: newLanguageCode },
-      'language_change'
+  try {
+    // Switch conversation (waits for pending operations FIRST)
+    // This ensures any flashcard/feedback generation in progress uses the OLD language
+    await connectionManager.switchConversation(
+      conversationId,
+      languageCode,
+      messages
     );
 
-    attrs.languageCode = newLanguageCode;
-    connectionAttributes.set(connectionId, attrs);
+    // Update processors with new language AFTER pending operations complete
+    // This ensures flashcard generation for the old conversation uses the old language
+    const flashcardProcessor = flashcardProcessors.get(connectionId);
+    const feedbackProcessor = feedbackProcessors.get(connectionId);
+    const memoryProcessor = memoryProcessors.get(connectionId);
 
-    const languageConfig = getLanguageConfig(newLanguageCode);
-
-    // Update all processors FIRST to ensure they have the correct language
-    flashcardProcessors.get(connectionId)?.setLanguage(newLanguageCode);
-    feedbackProcessors.get(connectionId)?.setLanguage(newLanguageCode);
-    memoryProcessors.get(connectionId)?.setLanguage(newLanguageCode);
-
-    // Update connection manager LAST - this updates the connection state
-    // which is used by the graph nodes
-    connectionManager.setLanguage(newLanguageCode);
-
-    // Verify the language config matches what we set
-    const managerLanguageCode = connectionManager.getLanguageCode();
-    if (managerLanguageCode !== newLanguageCode) {
-      logger.error(
-        {
-          connectionId,
-          expected: newLanguageCode,
-          actual: managerLanguageCode,
-        },
-        'language_sync_error_connection_manager'
-      );
+    if (flashcardProcessor) {
+      flashcardProcessor.setLanguage(languageCode);
+    }
+    if (feedbackProcessor) {
+      feedbackProcessor.setLanguage(languageCode);
+    }
+    if (memoryProcessor) {
+      memoryProcessor.setLanguage(languageCode);
     }
 
-    // Reset conversation on language change
-    connectionManager.reset();
-    flashcardProcessors.get(connectionId)?.reset();
-    feedbackProcessors.get(connectionId)?.reset();
-    memoryProcessors.get(connectionId)?.reset();
-
-    // Send confirmation
+    // Send ready signal
     ws.send(
       JSON.stringify({
-        type: 'language_changed',
-        languageCode: newLanguageCode,
-        languageName: languageConfig.name,
-        teacherName: languageConfig.teacherPersona.name,
+        type: 'conversation_ready',
+        conversationId,
+        languageCode,
+        timestamp: Date.now(),
       })
     );
 
     logger.info(
-      { connectionId, language: languageConfig.name },
-      'language_changed'
+      { connectionId, conversationId, languageCode },
+      'conversation_switch_complete'
+    );
+  } catch (error) {
+    logger.error(
+      { err: error, connectionId, conversationId },
+      'conversation_switch_error'
+    );
+    ws.send(
+      JSON.stringify({
+        type: 'error',
+        message: 'Failed to switch conversation',
+        timestamp: Date.now(),
+      })
     );
   }
 }
@@ -377,25 +464,14 @@ function handleUserContext(
 ): void {
   const timezone = message.timezone || message.data?.timezone;
   const userId = message.userId || message.data?.userId;
-  const languageCode = message.languageCode || message.data?.languageCode;
   const currentAttrs = connectionAttributes.get(connectionId) || {};
 
-  // Only update languageCode if it hasn't been explicitly set via set_language
-  // This prevents user_context from overriding the language set for a conversation
-  // The language should be set via set_language when creating/switching conversations
-  const shouldUpdateLanguage =
-    languageCode &&
-    !currentAttrs.languageCode && // Only if not already set
-    languageCode !== DEFAULT_LANGUAGE_CODE; // And not just the default
-
+  // Language is hardcoded to Spanish, ignore any languageCode from client
   connectionAttributes.set(connectionId, {
     ...currentAttrs,
     timezone: timezone || currentAttrs.timezone,
     userId: userId || currentAttrs.userId,
-    // Only set language if it hasn't been explicitly set and we have a valid code
-    languageCode: shouldUpdateLanguage
-      ? languageCode
-      : currentAttrs.languageCode,
+    languageCode: 'es', // Always Spanish
   });
 
   // Set user ID on connection manager for memory retrieval
@@ -434,7 +510,7 @@ function handleFlashcardClicked(
       english: card.english || card.translation || '',
       source: 'ui',
       timezone: attrs.timezone || '',
-      languageCode: attrs.languageCode || DEFAULT_LANGUAGE_CODE,
+      languageCode: 'es',
     });
   } catch (error) {
     logger.error({ err: error, connectionId }, 'flashcard_click_record_error');
@@ -502,7 +578,7 @@ async function handleTTSPronounce(
   message: { text?: string; languageCode?: string }
 ): Promise<void> {
   const text = message.text;
-  const languageCode = message.languageCode || DEFAULT_LANGUAGE_CODE;
+  const languageCode = 'es'; // Always Spanish
 
   if (typeof text !== 'string' || text.trim().length === 0) {
     ws.send(

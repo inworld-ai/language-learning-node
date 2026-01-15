@@ -1,4 +1,4 @@
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ChatSection } from './components/ChatSection';
@@ -6,6 +6,9 @@ import { FlashcardsSection } from './components/FlashcardsSection';
 import './styles/main.css';
 
 function AppContent() {
+  const { state } = useApp();
+  const { switchingConversation } = state;
+
   return (
     <div className="app-wrapper">
       <Header />
@@ -15,8 +18,17 @@ function AppContent() {
           <main className="main">
             <div className="container">
               <div className="app-grid">
-                <ChatSection />
-                <FlashcardsSection />
+                {switchingConversation ? (
+                  <div className="conversation-switch-loading">
+                    <div className="chat-loading-spinner" />
+                    <div className="chat-loading-text">Switching conversation...</div>
+                  </div>
+                ) : (
+                  <>
+                    <ChatSection />
+                    <FlashcardsSection />
+                  </>
+                )}
               </div>
             </div>
           </main>

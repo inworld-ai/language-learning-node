@@ -32,6 +32,8 @@ export interface State {
   output_modalities: ('text' | 'audio')[];
   // User ID for memory retrieval/creation (optional - anonymous users won't have this)
   userId?: string;
+  // Conversation ID for routing responses to the correct conversation
+  conversationId?: string;
 }
 
 /**

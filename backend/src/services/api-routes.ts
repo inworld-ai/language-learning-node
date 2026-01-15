@@ -32,7 +32,7 @@ apiRouter.post('/export-anki', async (req, res) => {
       return;
     }
 
-    const defaultDeckName = `Inworld Language Tutor ${languageCode || 'Language'} Cards`;
+    const defaultDeckName = `Inworld Language Tutor Spanish Cards`;
     const apkgBuffer = await exporter.exportFlashcards(
       flashcards,
       deckName || defaultDeckName

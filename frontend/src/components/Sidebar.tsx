@@ -9,14 +9,14 @@ export function Sidebar() {
     deleteConversation,
     renameConversation,
     toggleSidebar,
-    changeLanguage,
+    changeUiLanguage,
   } = useApp();
   const {
     conversations,
     currentConversationId,
     sidebarOpen,
     availableLanguages,
-    currentLanguage,
+    uiLanguage,
   } = state;
 
   // Helper to get flag for a language code
@@ -31,8 +31,9 @@ export function Sidebar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
+  // Use uiLanguage for the button display (doesn't change when switching conversations)
   const currentLang = availableLanguages.find(
-    (l) => l.code === currentLanguage
+    (l) => l.code === uiLanguage
   );
 
   // Focus input when editing starts
@@ -58,8 +59,8 @@ export function Sidebar() {
   }, []);
 
   const handleLanguageSelect = (langCode: string) => {
-    if (langCode !== currentLanguage) {
-      changeLanguage(langCode);
+    if (langCode !== uiLanguage) {
+      changeUiLanguage(langCode);
     }
     setShowLangMenu(false);
   };
@@ -144,7 +145,7 @@ export function Sidebar() {
                 {availableLanguages.map((lang) => (
                   <button
                     key={lang.code}
-                    className={`lang-option ${lang.code === currentLanguage ? 'active' : ''}`}
+                    className={`lang-option ${lang.code === uiLanguage ? 'active' : ''}`}
                     onClick={() => handleLanguageSelect(lang.code)}
                   >
                     <span className="lang-flag">{lang.flag}</span>

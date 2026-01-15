@@ -35,7 +35,7 @@ export class DialogPromptBuilderNode extends CustomNode {
     context: ProcessContext,
     state: StateWithMemories
   ): Promise<GraphTypes.LLMChatRequest> {
-    // Ensure we have a valid language code
+    // Get language code from state, fallback to default
     const languageCode = state.languageCode || DEFAULT_LANGUAGE_CODE;
     if (!state.languageCode) {
       const sessionId = context.getDatastore().get('sessionId') as string;

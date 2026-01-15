@@ -39,9 +39,11 @@ class TextExtractorNode extends CustomNode {
 /**
  * Creates a simple TTS graph for pronouncing words
  * RemoteTTSNode accepts String directly as input
+ * Language is hardcoded to Spanish
  */
 function createSimpleTTSGraph(languageCode: string): Graph {
-  const langConfig = getLanguageConfig(languageCode);
+  // Language is hardcoded to Spanish, ignore parameter
+  const langConfig = getLanguageConfig('es');
 
   logger.info(
     {
@@ -83,18 +85,17 @@ function createSimpleTTSGraph(languageCode: string): Graph {
   return graphBuilder.build();
 }
 
-// Cache for simple TTS graphs per language
-const simpleTTSGraphs: Map<string, Graph> = new Map();
+// Cache for simple TTS graph (always Spanish)
+let simpleTTSGraph: Graph | null = null;
 
 /**
- * Get or create a simple TTS graph for a language
+ * Get or create a simple TTS graph (always Spanish)
  */
 export function getSimpleTTSGraph(languageCode: string): Graph {
-  let graph = simpleTTSGraphs.get(languageCode);
-  if (!graph) {
-    logger.info({ languageCode }, 'creating_simple_tts_graph');
-    graph = createSimpleTTSGraph(languageCode);
-    simpleTTSGraphs.set(languageCode, graph);
+  // Language is hardcoded to Spanish, ignore parameter
+  if (!simpleTTSGraph) {
+    logger.info({ languageCode: 'es' }, 'creating_simple_tts_graph');
+    simpleTTSGraph = createSimpleTTSGraph('es');
   }
-  return graph;
+  return simpleTTSGraph;
 }

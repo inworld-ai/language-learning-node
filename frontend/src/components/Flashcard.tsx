@@ -8,10 +8,9 @@ interface FlashcardProps {
   isPronouncing?: boolean;
 }
 
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+function capitalizeFirstLetter(text: string): string {
+  if (!text) return text;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export function Flashcard({
@@ -42,6 +41,9 @@ export function Flashcard({
   const example = flashcard.example || flashcard.example_sentence || '';
   const mnemonic = flashcard.mnemonic || '';
 
+  // Capitalize the first letter of the target word for display
+  const displayTargetWord = capitalizeFirstLetter(targetWord);
+
   return (
     <div
       className={`flashcard ${isFlipped ? 'flipped' : ''}`}
@@ -49,10 +51,9 @@ export function Flashcard({
     >
       <div className="flashcard-inner">
         <div className="flashcard-front">
-          <div
-            className="flashcard-target-word"
-            dangerouslySetInnerHTML={{ __html: escapeHtml(targetWord) }}
-          />
+          <div className="flashcard-target-word">
+            {displayTargetWord}
+          </div>
           <button
             className={`pronounce-button ${isPronouncing ? 'loading' : ''}`}
             onClick={handlePronounce}
@@ -78,20 +79,16 @@ export function Flashcard({
           </button>
         </div>
         <div className="flashcard-back">
-          <div
-            className="flashcard-english"
-            dangerouslySetInnerHTML={{ __html: escapeHtml(english) }}
-          />
-          <div
-            className="flashcard-example"
-            dangerouslySetInnerHTML={{ __html: escapeHtml(example) }}
-          />
+          <div className="flashcard-english">
+            {english}
+          </div>
+          <div className="flashcard-example">
+            {example}
+          </div>
           {mnemonic && (
             <div className="flashcard-mnemonic">
               <span className="mnemonic-label">Remember:</span>{' '}
-              <span
-                dangerouslySetInnerHTML={{ __html: escapeHtml(mnemonic) }}
-              />
+              <span>{mnemonic}</span>
             </div>
           )}
         </div>

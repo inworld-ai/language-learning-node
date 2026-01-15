@@ -230,6 +230,12 @@ export class AudioPlayer {
   }
 
   stop(): void {
+    // Clear stream timeout
+    if (this.streamTimeout) {
+      clearTimeout(this.streamTimeout);
+      this.streamTimeout = null;
+    }
+
     // Use iOS handler if available
     if (this.isIOS && this.iosHandler) {
       this.iosHandler.stopAudioPlayback?.();
@@ -250,6 +256,7 @@ export class AudioPlayer {
       }
     }
 
+    // Clear audio queue to prevent any queued audio from playing
     this.audioQueue = [];
     this.isPlaying = false;
     this.isStartingPlayback = false;
