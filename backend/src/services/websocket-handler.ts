@@ -464,22 +464,46 @@ function handleUserContext(
 ): void {
   const timezone = message.timezone || message.data?.timezone;
   const userId = message.userId || message.data?.userId;
+  const languageCode = message.languageCode || message.data?.languageCode;
   const currentAttrs = connectionAttributes.get(connectionId) || {};
 
-  // Language is hardcoded to Spanish, ignore any languageCode from client
+  // Validate language code
+  const supportedCodes = getSupportedLanguageCodes();
+  const validatedLanguageCode = languageCode && supportedCodes.includes(languageCode)
+    ? languageCode
+    : currentAttrs.languageCode || DEFAULT_LANGUAGE_CODE;
+
   connectionAttributes.set(connectionId, {
     ...currentAttrs,
     timezone: timezone || currentAttrs.timezone,
     userId: userId || currentAttrs.userId,
-    languageCode: 'es', // Always Spanish
+    languageCode: validatedLanguageCode,
   });
 
-  // Set user ID on connection manager for memory retrieval
-  if (userId) {
-    const manager = connectionManagers.get(connectionId);
-    if (manager) {
-      manager.setUserId(userId);
+  // Update connection manager and processors with the language
+  const manager = connectionManagers.get(connectionId);
+  if (manager && validatedLanguageCode !== currentAttrs.languageCode) {
+    manager.setLanguage(validatedLanguageCode);
+    
+    // Update processors with new language
+    const flashcardProcessor = flashcardProcessors.get(connectionId);
+    const feedbackProcessor = feedbackProcessors.get(connectionId);
+    const memoryProcessor = memoryProcessors.get(connectionId);
+
+    if (flashcardProcessor) {
+      flashcardProcessor.setLanguage(validatedLanguageCode);
     }
+    if (feedbackProcessor) {
+      feedbackProcessor.setLanguage(validatedLanguageCode);
+    }
+    if (memoryProcessor) {
+      memoryProcessor.setLanguage(validatedLanguageCode);
+    }
+  }
+
+  // Set user ID on connection manager for memory retrieval
+  if (userId && manager) {
+    manager.setUserId(userId);
   }
 }
 

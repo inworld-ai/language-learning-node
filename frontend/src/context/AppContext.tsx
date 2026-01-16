@@ -77,28 +77,41 @@ type AppAction =
   | { type: 'SET_SWITCHING_CONVERSATION'; payload: boolean };
 
 // Initial state
-const createInitialState = (storage: HybridStorage): AppState => ({
-  connectionStatus: 'connecting',
-  currentLanguage: storage.getLanguage(),
-  uiLanguage: storage.getUiLanguage() || 'es',
-  availableLanguages: [],
-  chatHistory: [],
-  currentTranscript: '',
-  pendingTranscription: null,
-  streamingLLMResponse: '',
-  llmResponseComplete: false,
-  currentResponseId: null,
-  isRecording: false,
-  speechDetected: false,
-  flashcards: [],
-  pronouncingCardId: null,
-  feedbackMap: {},
-  userId: null,
-  conversations: [],
-  currentConversationId: null,
-  sidebarOpen: false,
-  switchingConversation: false,
-});
+const createInitialState = (storage: HybridStorage): AppState => {
+  // Determine the language from the current conversation, not from stored preference
+  let initialLanguage = storage.getLanguage(); // fallback to stored preference
+  const currentConversationId = storage.getCurrentConversationId();
+  if (currentConversationId) {
+    const allConversations = storage.getAllConversations();
+    const currentConversation = allConversations.find((c) => c.id === currentConversationId);
+    if (currentConversation) {
+      initialLanguage = currentConversation.languageCode;
+    }
+  }
+  
+  return {
+    connectionStatus: 'connecting',
+    currentLanguage: initialLanguage,
+    uiLanguage: storage.getUiLanguage() || 'es',
+    availableLanguages: [],
+    chatHistory: [],
+    currentTranscript: '',
+    pendingTranscription: null,
+    streamingLLMResponse: '',
+    llmResponseComplete: false,
+    currentResponseId: null,
+    isRecording: false,
+    speechDetected: false,
+    flashcards: [],
+    pronouncingCardId: null,
+    feedbackMap: {},
+    userId: null,
+    conversations: [],
+    currentConversationId: null,
+    sidebarOpen: false,
+    switchingConversation: false,
+  };
+};
 
 // Reducer
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -262,6 +275,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const ttsAudioPlayerInstance = useMemo(() => new AudioPlayer(), []);
   const ttsAudioPlayerRef = useRef(ttsAudioPlayerInstance);
   const hasMigratedRef = useRef(false);
+  const conversationsLoadedRef = useRef(false);
 
   const [state, dispatch] = useReducer(
     appReducer,
@@ -307,35 +321,23 @@ export function AppProvider({ children }: AppProviderProps) {
                 type: 'SET_CONVERSATIONS',
                 payload: allConversations,
               });
-              // Load the most recent conversation
-              const mostRecent = allConversations[0];
-              dispatch({
-                type: 'SET_CURRENT_CONVERSATION_ID',
-                payload: mostRecent.id,
-              });
-              // Update language to match the most recent conversation
-              if (
-                mostRecent.languageCode !== stateRef.current.currentLanguage
-              ) {
-                dispatch({
-                  type: 'SET_LANGUAGE',
-                  payload: mostRecent.languageCode,
-                });
-                storage.saveLanguage(mostRecent.languageCode);
+              
+              // Get the stored current conversation ID
+              let currentId = storage.getCurrentConversationId();
+
+              // If we have a stored conversation ID, verify it exists
+              if (currentId) {
+                const conversationExists = allConversations.find((c) => c.id === currentId);
+                if (!conversationExists) {
+                  // Stored conversation ID doesn't exist anymore, clear it
+                  currentId = null;
+                }
               }
-              const convData = storage.getConversation(mostRecent.id);
-              if (convData) {
-                const chatHistory = convData.messages.map((m) => ({
-                  role: m.role === 'user' ? 'learner' : 'teacher',
-                  content: m.content,
-                })) as ChatMessage[];
-                dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
+
+              // If no stored conversation found, use the most recent one
+              if (!currentId && allConversations.length > 0) {
+                currentId = allConversations[0].id;
               }
-              // Load flashcards for the most recent conversation
-              const flashcards = storage.getFlashcardsForConversation(
-                mostRecent.id
-              );
-              dispatch({ type: 'SET_FLASHCARDS', payload: flashcards });
             }
             // Also migrate any local data that isn't in Supabase yet
             return storage.migrateToSupabase(langsToSync);
@@ -348,6 +350,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
       storage.clearSupabaseClient();
       hasMigratedRef.current = false;
+      conversationsLoadedRef.current = false;
     }
   }, [supabase, user]);
 
@@ -364,6 +367,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const processPendingFlashcardsRef = useRef<(conversationId: string) => void>(
     () => {}
   );
+  const selectConversationRef = useRef<(conversationId: string) => void>(() => {});
 
   // Initialize audio players
   useEffect(() => {
@@ -378,50 +382,24 @@ export function AppProvider({ children }: AppProviderProps) {
   }, []);
 
   // Load initial state (conversations across all languages)
+  // Only run if Supabase sync hasn't already loaded conversations
   useEffect(() => {
+    if (conversationsLoadedRef.current) {
+      return; // Supabase sync already loaded conversations
+    }
+    
     const storage = storageRef.current;
-    const currentLang = stateRef.current.currentLanguage;
 
     // Load ALL conversations across all languages
     const allConversations = storage.getAllConversations();
     dispatch({ type: 'SET_CONVERSATIONS', payload: allConversations });
 
-    // Load current conversation or use the most recent one
-    let currentId = storage.getCurrentConversationId(currentLang);
-    if (!currentId && allConversations.length > 0) {
-      currentId = allConversations[0].id;
-      // Update language to match the most recent conversation
-      const mostRecentConvo = allConversations[0];
-      if (mostRecentConvo.languageCode !== currentLang) {
-        dispatch({
-          type: 'SET_LANGUAGE',
-          payload: mostRecentConvo.languageCode,
-        });
-        storage.saveLanguage(mostRecentConvo.languageCode);
-      }
-      storage.setCurrentConversationId(mostRecentConvo.languageCode, currentId);
-    }
-
-    if (currentId) {
-      dispatch({ type: 'SET_CURRENT_CONVERSATION_ID', payload: currentId });
-      const conversationData = storage.getConversation(currentId);
-      if (conversationData) {
-        // Convert backend format to UI format
-        const chatHistory = conversationData.messages.map((m) => ({
-          role: m.role === 'user' ? 'learner' : 'teacher',
-          content: m.content,
-        })) as ChatMessage[];
-        dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
-
-        // Load flashcards for this specific conversation
-        const flashcards = storage.getFlashcardsForConversation(currentId);
-        dispatch({ type: 'SET_FLASHCARDS', payload: flashcards });
-      }
-    } else {
-      // No conversations yet - clear flashcards
+    // If no conversations, clear flashcards
+    if (allConversations.length === 0) {
       dispatch({ type: 'SET_FLASHCARDS', payload: [] });
+      conversationsLoadedRef.current = true;
     }
-  }, []); // Run only once on mount
+  }, []); // Run once on mount
 
   // Save chat history to current conversation when it changes
   useEffect(() => {
@@ -451,11 +429,16 @@ export function AppProvider({ children }: AppProviderProps) {
             payload: data.languages,
           });
 
+          // Don't reset language if we have a current conversation - let selectConversation handle it
+          // Only validate if we don't have a conversation loaded yet
           const currentLang = stateRef.current.currentLanguage;
+          const hasCurrentConversation = !!stateRef.current.currentConversationId;
           const isValidLanguage = data.languages.some(
             (lang: Language) => lang.code === currentLang
           );
-          if (!isValidLanguage) {
+          // Only reset language if it's invalid AND we don't have a current conversation
+          // (if we have a conversation, selectConversation will set the correct language)
+          if (!isValidLanguage && !hasCurrentConversation) {
             dispatch({
               type: 'SET_LANGUAGE',
               payload: data.defaultLanguage || 'es',
@@ -500,10 +483,7 @@ export function AppProvider({ children }: AppProviderProps) {
         type: 'SET_CURRENT_CONVERSATION_ID',
         payload: newConversation.id,
       });
-      storage.setCurrentConversationId(
-        currentState.currentLanguage,
-        newConversation.id
-      );
+      storage.setCurrentConversationId(newConversation.id);
       // Process any flashcards that arrived before conversation was created
       processPendingFlashcardsRef.current(newConversation.id);
     } else if (conversationId) {
@@ -1038,7 +1018,7 @@ export function AppProvider({ children }: AppProviderProps) {
         type: 'SET_CURRENT_CONVERSATION_ID',
         payload: conversationId,
       });
-      storage.setCurrentConversationId(languageCode, conversationId);
+      storage.setCurrentConversationId(conversationId);
 
       // Load flashcards for this specific conversation
       const flashcards = storage.getFlashcardsForConversation(conversationId);
@@ -1097,6 +1077,8 @@ export function AppProvider({ children }: AppProviderProps) {
           timezone: tz,
           // Use auth user ID - will be null if not authenticated
           userId: user?.id || null,
+          // Send current language so backend initializes with correct language
+          languageCode: state.currentLanguage,
         });
       } catch {
         // ignore
@@ -1162,10 +1144,7 @@ export function AppProvider({ children }: AppProviderProps) {
           type: 'SET_CURRENT_CONVERSATION_ID',
           payload: newConversation.id,
         });
-        storage.setCurrentConversationId(
-          stateRef.current.currentLanguage,
-          newConversation.id
-        );
+        storage.setCurrentConversationId(newConversation.id);
         // Process any flashcards that arrived before conversation was created
         processPendingFlashcardsRef.current(newConversation.id);
       } else {
@@ -1278,6 +1257,13 @@ export function AppProvider({ children }: AppProviderProps) {
       const targetLanguage =
         conversation?.languageCode || state.currentLanguage;
 
+      // Set language immediately (before waiting for backend response)
+      // This ensures the language is correct right away, especially on page refresh
+      if (targetLanguage !== state.currentLanguage) {
+        dispatch({ type: 'SET_LANGUAGE', payload: targetLanguage });
+        storage.saveLanguage(targetLanguage);
+      }
+
       // Load the selected conversation data
       const conversationData = storage.getConversation(conversationId);
 
@@ -1309,11 +1295,6 @@ export function AppProvider({ children }: AppProviderProps) {
         
         // UI will be updated when conversation_ready is received
       } else {
-        // If not connected, update UI immediately
-        if (targetLanguage !== state.currentLanguage) {
-          dispatch({ type: 'SET_LANGUAGE', payload: targetLanguage });
-          storage.saveLanguage(targetLanguage);
-        }
 
         if (conversationData) {
           const chatHistory = conversationData.messages.map((m) => ({
@@ -1329,7 +1310,7 @@ export function AppProvider({ children }: AppProviderProps) {
           type: 'SET_CURRENT_CONVERSATION_ID',
           payload: conversationId,
         });
-        storage.setCurrentConversationId(targetLanguage, conversationId);
+        storage.setCurrentConversationId(conversationId);
 
         const flashcards = storage.getFlashcardsForConversation(conversationId);
         dispatch({ type: 'SET_FLASHCARDS', payload: flashcards });
@@ -1351,6 +1332,38 @@ export function AppProvider({ children }: AppProviderProps) {
       state.connectionStatus,
     ]
   );
+
+  // Update ref so initialization can call selectConversation
+  useEffect(() => {
+    selectConversationRef.current = selectConversation;
+    
+    // If conversations haven't been loaded yet and we have conversations in state, load the current one
+    if (!conversationsLoadedRef.current && state.conversations.length > 0 && selectConversationRef.current) {
+      const storage = storageRef.current;
+      
+      // Get the stored current conversation ID
+      let currentId = storage.getCurrentConversationId();
+      
+      // If we have a stored conversation ID, verify it exists
+      if (currentId) {
+        const conversationExists = state.conversations.find((c) => c.id === currentId);
+        if (!conversationExists) {
+          currentId = null;
+        }
+      }
+      
+      // If no stored conversation found, use the most recent one
+      if (!currentId && state.conversations.length > 0) {
+        currentId = state.conversations[0].id;
+      }
+      
+      // Use selectConversation to load the conversation
+      if (currentId) {
+        selectConversationRef.current(currentId);
+        conversationsLoadedRef.current = true;
+      }
+    }
+  }, [selectConversation, state.conversations]);
 
   // Create a new conversation
   const createNewConversation = useCallback(() => {
@@ -1398,10 +1411,7 @@ export function AppProvider({ children }: AppProviderProps) {
       type: 'SET_CURRENT_CONVERSATION_ID',
       payload: newConversation.id,
     });
-    storage.setCurrentConversationId(
-      languageForNewConversation,
-      newConversation.id
-    );
+    storage.setCurrentConversationId(newConversation.id);
 
     // Clear chat and flashcards (new conversation has no flashcards)
     dispatch({ type: 'RESET_CONVERSATION' });

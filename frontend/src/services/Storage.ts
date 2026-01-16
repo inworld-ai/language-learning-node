@@ -11,11 +11,11 @@ export class Storage {
   private conversationKey = 'aprende-conversation-history'; // Legacy single conversation
   private conversationsListKeyPrefix = 'aprende-conversations-'; // + languageCode
   private conversationDataKeyPrefix = 'aprende-conversation-'; // + conversationId
-  private currentConversationKeyPrefix = 'aprende-current-conversation-'; // + languageCode
   private flashcardsKey = 'aprende-flashcards'; // Legacy per-language flashcards
   private flashcardsConversationKeyPrefix = 'aprende-flashcards-conv-'; // + conversationId
   private languageKey = 'aprende-language';
   private uiLanguageKey = 'aprende-ui-language';
+  private currentConversationKey = 'aprende-current-conversation';
 
   // Language preference methods
   getLanguage(): string {
@@ -194,7 +194,7 @@ export class Storage {
             JSON.stringify(conversationData)
           );
           localStorage.setItem(
-            this.currentConversationKeyPrefix + languageCode,
+            this.currentConversationKey,
             conversationId
           );
 
@@ -301,11 +301,9 @@ export class Storage {
       );
 
       // If this was the current conversation, clear current
-      const currentId = this.getCurrentConversationId(languageCode);
+      const currentId = this.getCurrentConversationId();
       if (currentId === conversationId) {
-        localStorage.removeItem(
-          this.currentConversationKeyPrefix + languageCode
-        );
+        localStorage.removeItem(this.currentConversationKey);
       }
     } catch (error) {
       console.error('Failed to delete conversation:', error);
@@ -333,22 +331,17 @@ export class Storage {
     }
   }
 
-  getCurrentConversationId(languageCode: string): string | null {
+  getCurrentConversationId(): string | null {
     try {
-      return localStorage.getItem(
-        this.currentConversationKeyPrefix + languageCode
-      );
+      return localStorage.getItem(this.currentConversationKey);
     } catch {
       return null;
     }
   }
 
-  setCurrentConversationId(languageCode: string, conversationId: string): void {
+  setCurrentConversationId(conversationId: string): void {
     try {
-      localStorage.setItem(
-        this.currentConversationKeyPrefix + languageCode,
-        conversationId
-      );
+      localStorage.setItem(this.currentConversationKey, conversationId);
     } catch (error) {
       console.error('Failed to set current conversation:', error);
     }
