@@ -7,14 +7,12 @@ export function Header() {
   const { connectionStatus } = state;
   const { user, isLoading, isConfigured, signUp, signIn, signOut } = useAuth();
 
-  const [showMenu, setShowMenu] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const authFormRef = useRef<HTMLDivElement>(null);
   const signInButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -24,21 +22,15 @@ export function Header() {
     disconnected: 'Disconnected',
   };
 
-  // Close menus when clicking outside
+  // Close auth form when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
-      const clickedInMenu =
-        menuRef.current && menuRef.current.contains(target);
       const clickedInAuthForm =
         authFormRef.current && authFormRef.current.contains(target);
       const clickedSignInButton =
         signInButtonRef.current && signInButtonRef.current.contains(target);
 
-      // Close menu if clicked outside
-      if (showMenu && !clickedInMenu) {
-        setShowMenu(false);
-      }
       // Close auth form if clicked outside (but not on the Sign In button itself)
       if (showAuthForm && !clickedInAuthForm && !clickedSignInButton) {
         setShowAuthForm(false);
@@ -53,7 +45,7 @@ export function Header() {
       clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showMenu, showAuthForm]);
+  }, [showAuthForm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +74,6 @@ export function Header() {
 
   const handleSignOut = async () => {
     await signOut();
-    setShowMenu(false);
   };
 
   return (
@@ -217,21 +208,9 @@ export function Header() {
             </div>
           )}
 
-          {/* Settings Menu */}
-          <div ref={menuRef} style={{ position: 'relative' }}>
-            <button
-              className="logo-menu-button"
-              onClick={() => setShowMenu(!showMenu)}
-              aria-label="Open menu"
-            >
-              <img src="/favicon.svg" alt="Menu" className="logo-icon" />
-            </button>
-
-            {showMenu && (
-              <div className="header-dropdown">
-                {/* Dropdown content can go here if needed */}
-              </div>
-            )}
+          {/* Logo */}
+          <div>
+            <img src="/favicon.svg" alt="Inworld Language Tutor" className="logo-icon" />
           </div>
         </div>
       </div>
