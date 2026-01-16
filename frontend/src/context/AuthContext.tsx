@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -27,18 +28,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [supabase] = useState<SupabaseClient | null>(() => {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Singleton Supabase client to prevent multiple instances
+let supabaseClientInstance: SupabaseClient | null = null;
 
-    if (!url || !publishableKey) {
-      console.log('Supabase not configured - running in anonymous mode');
-      return null;
-    }
+function getSupabaseClient(): SupabaseClient | null {
+  if (supabaseClientInstance) {
+    return supabaseClientInstance;
+  }
 
-    return createClient(url, publishableKey);
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!url || !publishableKey) {
+    console.log('Supabase not configured - running in anonymous mode');
+    return null;
+  }
+
+  supabaseClientInstance = createClient(url, publishableKey, {
+    auth: {
+      storageKey: 'aprende-auth-token',
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
   });
+
+  return supabaseClientInstance;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Use useMemo to ensure client is only created once
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
