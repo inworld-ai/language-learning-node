@@ -127,7 +127,7 @@ export function createConversationGraph(_config: ConversationGraphConfig) {
   const ttsNode = new RemoteTTSNode({
     id: 'tts_node',
     speakerId: 'Diego',
-    modelId: 'inworld-tts-1',
+    modelId: 'inworld-tts-1.5-max',
     sampleRate: 16000,
     speakingRate: 1,
     temperature: 0.7,
