@@ -109,30 +109,33 @@ Find these in: Supabase Dashboard > Settings > API
 ```
 language-learning-node/
 ├── backend/
-│   ├── __tests__/            # Backend unit tests
-│   ├── config/               # Language & server configuration
-│   ├── graphs/               # Inworld Runtime conversation graphs
-│   │   ├── configs/          # Graph JSON configurations
-│   │   └── nodes/            # Custom graph nodes (STT, TTS, etc.)
-│   ├── helpers/              # Audio utils, connection management, etc.
-│   ├── prompts/              # Nunjucks prompt templates
-│   ├── services/             # Server components
-│   ├── utils/                # Logger
-│   └── server.ts             # Express + WebSocket server entry point
+│   ├── src/
+│   │   ├── __tests__/        # Backend unit tests
+│   │   ├── config/           # Language & server configuration
+│   │   ├── graphs/           # Inworld Runtime conversation graphs
+│   │   │   ├── configs/      # Graph JSON configurations
+│   │   │   └── nodes/        # Custom graph nodes
+│   │   ├── helpers/          # Audio utils, connection management
+│   │   ├── prompts/          # Nunjucks prompt templates
+│   │   ├── services/         # Server components
+│   │   ├── utils/            # Logger
+│   │   └── server.ts         # Entry point
+│   ├── .env                  # Backend environment variables
+│   └── vitest.config.ts      # Backend test config
 ├── frontend/
 │   ├── src/
 │   │   ├── __tests__/        # Frontend unit tests
 │   │   ├── components/       # React components
-│   │   ├── context/          # App state & auth (React Context)
+│   │   ├── context/          # App state & auth
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── services/         # WebSocket client, audio, storage
 │   │   ├── styles/           # CSS
 │   │   └── types/            # TypeScript types
+│   ├── .env.local            # Frontend environment variables
 │   └── vitest.config.ts      # Frontend test config
-├── supabase/                 # Database migrations (optional)
-├── deploy/                   # Deployment configurations
-├── package.json
-└── .env                      # Environment variables
+├── supabase/
+│   └── migrations/           # Database schema
+└── deploy/                   # Deployment configurations
 ```
 
 ## Architecture

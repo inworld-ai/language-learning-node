@@ -66,7 +66,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     sttLanguageCode: 'en-US',
     ttsConfig: {
       speakerId: 'Ashley',
-      modelId: 'inworld-tts-1-max',
+      modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 1.1,
       languageCode: 'en-US',
@@ -95,7 +95,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     sttLanguageCode: 'es-MX', // Mexican Spanish
     ttsConfig: {
       speakerId: 'Diego',
-      modelId: 'inworld-tts-1-max',
+      modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 1.1,
       languageCode: 'es-MX',
@@ -124,7 +124,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     sttLanguageCode: 'fr-FR',
     ttsConfig: {
       speakerId: 'Alain',
-      modelId: 'inworld-tts-1-max',
+      modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 1.1,
       languageCode: 'fr-FR',
@@ -154,7 +154,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     sttLanguageCode: 'de-DE',
     ttsConfig: {
       speakerId: 'Josef',
-      modelId: 'inworld-tts-1-max',
+      modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 0.7,
       languageCode: 'de-DE',
@@ -184,7 +184,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     sttLanguageCode: 'it-IT',
     ttsConfig: {
       speakerId: 'Orietta',
-      modelId: 'inworld-tts-1-max',
+      modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 1.1,
       languageCode: 'it-IT',
@@ -214,7 +214,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     sttLanguageCode: 'pt-BR', // Brazilian Portuguese
     ttsConfig: {
       speakerId: 'Heitor',
-      modelId: 'inworld-tts-1-max',
+      modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 0.7,
       languageCode: 'pt-BR',
