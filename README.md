@@ -27,13 +27,22 @@ cd language-learning-node
 
 ### Step 2: Install Dependencies
 
+
+Frontend:
 ```bash
+cd frontend
+npm install
+```
+
+Backend:
+```bash
+cd backend
 npm install
 ```
 
 ### Step 3: Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the /backend directory:
 
 ```bash
 INWORLD_API_KEY=your_inworld_base64_key
@@ -49,18 +58,17 @@ ASSEMBLY_AI_API_KEY=your_assemblyai_key
 
 **For development** (with auto-reload on file changes):
 
+In frontend dir:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
-
-**For production**:
-
+In backend dir:
 ```bash
-npm run build
-npm start
+npm run dev
 ```
+
+Open [http://localhost:5173](http://localhost:5173)
 
 ### Step 5 (Optional): Set Up Supabase for Auth & Memory
 
@@ -80,7 +88,7 @@ This creates all tables, indexes, RLS policies, and the `match_memories` functio
 
 Find your project ref in the Supabase dashboard URL: `supabase.com/dashboard/project/YOUR_PROJECT_REF`
 
-**c) Add Supabase variables to `.env` (root):**
+**c) Add Supabase variables to `.env` (backend):**
 
 ```bash
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
