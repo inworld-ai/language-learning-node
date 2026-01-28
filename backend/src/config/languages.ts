@@ -94,7 +94,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     flag: '🇲🇽',
     sttLanguageCode: 'es-MX', // Mexican Spanish
     ttsConfig: {
-      speakerId: 'Diego',
+      speakerId: 'Rafael',
       modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 1.1,
