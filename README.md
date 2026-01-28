@@ -27,7 +27,6 @@ cd language-learning-node
 
 ### Step 2: Install Dependencies
 
-
 Frontend:
 ```bash
 cd frontend
