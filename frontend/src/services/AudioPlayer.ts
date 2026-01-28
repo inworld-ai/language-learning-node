@@ -16,6 +16,7 @@ export class AudioPlayer {
   private scheduledSources: AudioBufferSourceNode[] = [];
   private scheduleInterval: ReturnType<typeof setInterval> | null = null;
   private readonly SCHEDULE_AHEAD_TIME = 0.1; // Look 100ms ahead
+  private readonly FADE_SAMPLES = 128; // ~2.7ms at 48kHz, ~8ms at 16kHz
 
   constructor() {
     this.isIOS =
@@ -120,6 +121,7 @@ export class AudioPlayer {
         sampleRate,
         audioFormat
       );
+      this.applyFadeEnvelope(audioBuffer);
 
       this.audioQueue.push(audioBuffer);
 
@@ -196,6 +198,24 @@ export class AudioPlayer {
     }
   }
 
+  private applyFadeEnvelope(audioBuffer: AudioBuffer): void {
+    const channelData = audioBuffer.getChannelData(0);
+    const length = channelData.length;
+    const fadeLength = Math.min(this.FADE_SAMPLES, Math.floor(length / 4));
+
+    // Fade-in at start
+    for (let i = 0; i < fadeLength; i++) {
+      const gain = i / fadeLength;
+      channelData[i] *= gain;
+    }
+
+    // Fade-out at end
+    for (let i = 0; i < fadeLength; i++) {
+      const gain = i / fadeLength;
+      channelData[length - 1 - i] *= gain;
+    }
+  }
+
   private scheduleBuffers(): void {
     if (!this.audioContext || this.audioQueue.length === 0) {
       return;
@@ -203,9 +223,14 @@ export class AudioPlayer {
 
     const currentTime = this.audioContext.currentTime;
 
-    // Reset nextStartTime if we fell behind (queue underrun)
+    // Handle queue underrun with safety margin
     if (this.nextStartTime < currentTime) {
-      this.nextStartTime = currentTime;
+      const underrunAmount = currentTime - this.nextStartTime;
+      if (underrunAmount > 0.05) {
+        console.warn(`[AudioPlayer] Queue underrun: ${(underrunAmount * 1000).toFixed(1)}ms behind`);
+      }
+      // Add small margin to ensure we're not scheduling in the past
+      this.nextStartTime = currentTime + 0.005;
     }
 
     // Schedule buffers that should start within SCHEDULE_AHEAD_TIME
