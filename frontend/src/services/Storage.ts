@@ -193,10 +193,7 @@ export class Storage {
             this.conversationDataKeyPrefix + conversationId,
             JSON.stringify(conversationData)
           );
-          localStorage.setItem(
-            this.currentConversationKey,
-            conversationId
-          );
+          localStorage.setItem(this.currentConversationKey, conversationId);
 
           // Remove legacy data
           localStorage.removeItem(this.conversationKey);

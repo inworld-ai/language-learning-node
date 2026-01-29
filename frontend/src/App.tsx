@@ -21,7 +21,9 @@ function AppContent() {
                 {switchingConversation ? (
                   <div className="conversation-switch-loading">
                     <div className="chat-loading-spinner" />
-                    <div className="chat-loading-text">Switching conversation...</div>
+                    <div className="chat-loading-text">
+                      Switching conversation...
+                    </div>
                   </div>
                 ) : (
                   <>

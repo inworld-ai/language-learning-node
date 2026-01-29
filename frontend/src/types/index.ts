@@ -19,6 +19,7 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   timestamp?: string;
+  feedback?: string;
 }
 
 // Conversation message for backend

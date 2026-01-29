@@ -60,9 +60,7 @@ export class ConnectionManager {
 
   // Callback for memory creation
   private memoryCallback:
-    | ((
-        messages: Array<{ role: string; content: string }>
-      ) => Promise<void>)
+    | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
     | null = null;
 
   // User ID for memory retrieval/creation
@@ -899,7 +897,7 @@ export class ConnectionManager {
     }));
 
     connection.state.messages = chatMessages;
-    
+
     this.logger.info(
       { messageCount: chatMessages.length },
       'conversation_history_loaded'

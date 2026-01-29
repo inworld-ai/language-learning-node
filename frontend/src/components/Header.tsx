@@ -144,7 +144,10 @@ export function Header() {
                   </button>
                   {showAuthForm && (
                     <div ref={authFormRef} className="header-auth-form-wrapper">
-                      <form onSubmit={handleSubmit} className="header-auth-form">
+                      <form
+                        onSubmit={handleSubmit}
+                        className="header-auth-form"
+                      >
                         <div className="header-auth-form-header">
                           {isSignUp ? 'Create Account' : 'Sign In'}
                           <button
@@ -210,7 +213,11 @@ export function Header() {
 
           {/* Logo */}
           <div>
-            <img src="/favicon.svg" alt="Inworld Language Tutor" className="logo-icon" />
+            <img
+              src="/favicon.svg"
+              alt="Inworld Language Tutor"
+              className="logo-icon"
+            />
           </div>
         </div>
       </div>

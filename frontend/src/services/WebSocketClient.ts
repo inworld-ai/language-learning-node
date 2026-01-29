@@ -198,7 +198,6 @@ export class WebSocketClient {
     [key: string]: unknown;
   }): void {
     switch (message.type) {
-
       case 'transcription':
         this.emit('transcription', {
           text: message.text,

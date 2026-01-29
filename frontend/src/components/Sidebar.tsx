@@ -32,9 +32,7 @@ export function Sidebar() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   // Use uiLanguage for the button display (doesn't change when switching conversations)
-  const currentLang = availableLanguages.find(
-    (l) => l.code === uiLanguage
-  );
+  const currentLang = availableLanguages.find((l) => l.code === uiLanguage);
 
   // Focus input when editing starts
   useEffect(() => {

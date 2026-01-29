@@ -17,7 +17,7 @@ export const apiRouter = Router();
 // ANKI export endpoint
 apiRouter.post('/export-anki', async (req, res) => {
   try {
-    const { flashcards, deckName, languageCode } = req.body;
+    const { flashcards, deckName, languageCode: _languageCode } = req.body;
 
     if (!flashcards || !Array.isArray(flashcards) || flashcards.length === 0) {
       res.status(400).json({ error: 'No flashcards provided' });

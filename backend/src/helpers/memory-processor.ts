@@ -127,7 +127,7 @@ export class MemoryProcessor {
   }
 
   /**
-   * Asynchronous Memory creation 
+   * Asynchronous Memory creation
    */
   async createMemoryAsync(
     userId: string,

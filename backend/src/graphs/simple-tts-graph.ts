@@ -18,7 +18,10 @@ import {
   ProcessContext,
   RemoteTTSNode,
 } from '@inworld/runtime/graph';
-import { getLanguageConfig, getSupportedLanguageCodes } from '../config/languages.js';
+import {
+  getLanguageConfig,
+  getSupportedLanguageCodes,
+} from '../config/languages.js';
 import { serverConfig } from '../config/server.js';
 import { graphLogger as logger } from '../utils/logger.js';
 
@@ -91,20 +94,20 @@ const simpleTTSGraphs = new Map<string, Graph>();
  */
 export function initializeTTSGraphs(): void {
   const languageCodes = getSupportedLanguageCodes();
-  
-  logger.info({ languageCount: languageCodes.length }, 'initializing_tts_graphs');
-  
+
+  logger.info(
+    { languageCount: languageCodes.length },
+    'initializing_tts_graphs'
+  );
+
   for (const languageCode of languageCodes) {
     if (!simpleTTSGraphs.has(languageCode)) {
       logger.info({ languageCode }, 'creating_tts_graph');
       simpleTTSGraphs.set(languageCode, createSimpleTTSGraph(languageCode));
     }
   }
-  
-  logger.info(
-    { graphCount: simpleTTSGraphs.size },
-    'tts_graphs_initialized'
-  );
+
+  logger.info({ graphCount: simpleTTSGraphs.size }, 'tts_graphs_initialized');
 }
 
 /**

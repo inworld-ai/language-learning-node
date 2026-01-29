@@ -296,11 +296,17 @@ function handleConversationUpdate(
 ): void {
   // Handle both formats: { data: { messages: [...] } } and { messages: [...] }
   const messages =
-    message.messages || message.data?.messages || (message.data as any)?.messages;
+    message.messages ||
+    message.data?.messages ||
+    (message.data as any)?.messages;
 
   if (!messages || !Array.isArray(messages)) {
     logger.debug(
-      { connectionId, hasData: !!message.data, hasMessages: !!message.messages },
+      {
+        connectionId,
+        hasData: !!message.data,
+        hasMessages: !!message.messages,
+      },
       'conversation_update_missing_or_invalid_messages'
     );
     return;
@@ -340,14 +346,18 @@ async function handleConversationSwitch(
     };
   }
 ): Promise<void> {
-  const conversationId =
-    message.conversationId || message.data?.conversationId;
-  const requestedLanguageCode = message.languageCode || message.data?.languageCode;
+  const conversationId = message.conversationId || message.data?.conversationId;
+  const requestedLanguageCode =
+    message.languageCode || message.data?.languageCode;
   const messages = message.messages || message.data?.messages;
 
   if (!conversationId || !requestedLanguageCode) {
     logger.warn(
-      { connectionId, hasConversationId: !!conversationId, hasLanguageCode: !!requestedLanguageCode },
+      {
+        connectionId,
+        hasConversationId: !!conversationId,
+        hasLanguageCode: !!requestedLanguageCode,
+      },
       'conversation_switch_missing_required_fields'
     );
     ws.send(
@@ -419,6 +429,7 @@ async function handleConversationSwitch(
     }
     if (feedbackProcessor) {
       feedbackProcessor.setLanguage(languageCode);
+      feedbackProcessor.reset();
     }
     if (memoryProcessor) {
       memoryProcessor.setLanguage(languageCode);
@@ -469,9 +480,10 @@ function handleUserContext(
 
   // Validate language code
   const supportedCodes = getSupportedLanguageCodes();
-  const validatedLanguageCode = languageCode && supportedCodes.includes(languageCode)
-    ? languageCode
-    : currentAttrs.languageCode || DEFAULT_LANGUAGE_CODE;
+  const validatedLanguageCode =
+    languageCode && supportedCodes.includes(languageCode)
+      ? languageCode
+      : currentAttrs.languageCode || DEFAULT_LANGUAGE_CODE;
 
   connectionAttributes.set(connectionId, {
     ...currentAttrs,
@@ -484,7 +496,7 @@ function handleUserContext(
   const manager = connectionManagers.get(connectionId);
   if (manager && validatedLanguageCode !== currentAttrs.languageCode) {
     manager.setLanguage(validatedLanguageCode);
-    
+
     // Update processors with new language
     const flashcardProcessor = flashcardProcessors.get(connectionId);
     const feedbackProcessor = feedbackProcessors.get(connectionId);
@@ -624,8 +636,11 @@ async function handleTTSPronounce(
   try {
     // Get language from connection manager (current conversation language)
     const connectionManager = connectionManagers.get(connectionId);
-    const languageCode = connectionManager?.getLanguageCode() || message.languageCode || DEFAULT_LANGUAGE_CODE;
-    
+    const languageCode =
+      connectionManager?.getLanguageCode() ||
+      message.languageCode ||
+      DEFAULT_LANGUAGE_CODE;
+
     logger.debug(
       { connectionId, languageCode, textLength: text.length },
       'tts_pronounce_starting'

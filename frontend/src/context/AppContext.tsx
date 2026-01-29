@@ -84,12 +84,14 @@ const createInitialState = (storage: HybridStorage): AppState => {
   const currentConversationId = storage.getCurrentConversationId();
   if (currentConversationId) {
     const allConversations = storage.getAllConversations();
-    const currentConversation = allConversations.find((c) => c.id === currentConversationId);
+    const currentConversation = allConversations.find(
+      (c) => c.id === currentConversationId
+    );
     if (currentConversation) {
       initialLanguage = currentConversation.languageCode;
     }
   }
-  
+
   return {
     connectionStatus: 'connecting',
     currentLanguage: initialLanguage,
@@ -171,6 +173,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
           ...state.feedbackMap,
           [action.payload.messageContent]: action.payload.feedback,
         },
+        // Also update the message in chatHistory so it persists when saved
+        chatHistory: state.chatHistory.map((m) =>
+          m.content === action.payload.messageContent
+            ? { ...m, feedback: action.payload.feedback }
+            : m
+        ),
       };
     case 'SET_FEEDBACK_MAP':
       return {
@@ -327,13 +335,15 @@ export function AppProvider({ children }: AppProviderProps) {
                 type: 'SET_CONVERSATIONS',
                 payload: allConversations,
               });
-              
+
               // Get the stored current conversation ID
               let currentId = storage.getCurrentConversationId();
 
               // If we have a stored conversation ID, verify it exists
               if (currentId) {
-                const conversationExists = allConversations.find((c) => c.id === currentId);
+                const conversationExists = allConversations.find(
+                  (c) => c.id === currentId
+                );
                 if (!conversationExists) {
                   // Stored conversation ID doesn't exist anymore, clear it
                   currentId = null;
@@ -373,7 +383,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const processPendingFlashcardsRef = useRef<(conversationId: string) => void>(
     () => {}
   );
-  const selectConversationRef = useRef<(conversationId: string) => void>(() => {});
+  const selectConversationRef = useRef<(conversationId: string) => void>(
+    () => {}
+  );
 
   // Initialize audio players
   useEffect(() => {
@@ -393,7 +405,7 @@ export function AppProvider({ children }: AppProviderProps) {
     if (conversationsLoadedRef.current) {
       return; // Supabase sync already loaded conversations
     }
-    
+
     const storage = storageRef.current;
 
     // Load ALL conversations across all languages
@@ -417,7 +429,8 @@ export function AppProvider({ children }: AppProviderProps) {
       const messages = state.chatHistory.map((m) => ({
         role: m.role === 'learner' ? 'user' : 'assistant',
         content: m.content,
-        timestamp: new Date().toISOString(),
+        timestamp: m.timestamp || new Date().toISOString(),
+        feedback: m.feedback,
       })) as import('../types').ConversationMessage[];
       storage.saveConversation(currentId, messages, currentLang);
     }
@@ -438,7 +451,8 @@ export function AppProvider({ children }: AppProviderProps) {
           // Don't reset language if we have a current conversation - let selectConversation handle it
           // Only validate if we don't have a conversation loaded yet
           const currentLang = stateRef.current.currentLanguage;
-          const hasCurrentConversation = !!stateRef.current.currentConversationId;
+          const hasCurrentConversation =
+            !!stateRef.current.currentConversationId;
           const isValidLanguage = data.languages.some(
             (lang: Language) => lang.code === currentLang
           );
@@ -506,7 +520,7 @@ export function AppProvider({ children }: AppProviderProps) {
       storage.addMessage('assistant', pendingLLMResponse);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'teacher', content: pendingLLMResponse },
+        payload: { role: 'teacher', content: pendingLLMResponse, timestamp: new Date().toISOString() },
       });
 
       const conversationHistory = storage.getConversationHistory();
@@ -543,13 +557,13 @@ export function AppProvider({ children }: AppProviderProps) {
       storage.addMessage('user', pendingTranscription);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'learner', content: pendingTranscription },
+        payload: { role: 'learner', content: pendingTranscription, timestamp: new Date().toISOString() },
       });
 
       storage.addMessage('assistant', pendingLLMResponse);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'teacher', content: pendingLLMResponse },
+        payload: { role: 'teacher', content: pendingLLMResponse, timestamp: new Date().toISOString() },
       });
 
       const conversationHistory = storage.getConversationHistory();
@@ -622,7 +636,7 @@ export function AppProvider({ children }: AppProviderProps) {
         if (lastTeacherMessage?.content !== frozenText) {
           dispatch({
             type: 'ADD_MESSAGE',
-            payload: { role: 'teacher', content: frozenText },
+            payload: { role: 'teacher', content: frozenText, timestamp: new Date().toISOString() },
           });
         }
       }
@@ -664,7 +678,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
     wsClient.on('speech_detected', (data) => {
       const payload = data as { text?: string; conversationId?: string };
-      
+
       // Only process if it's for the current conversation
       if (
         !payload.conversationId ||
@@ -682,7 +696,7 @@ export function AppProvider({ children }: AppProviderProps) {
     wsClient.on('partial_transcript', (data) => {
       const payload = data as { text?: string; conversationId?: string };
       const text = payload.text;
-      
+
       // Only process if it's for the current conversation
       if (
         text &&
@@ -704,7 +718,7 @@ export function AppProvider({ children }: AppProviderProps) {
     wsClient.on('transcription', (data) => {
       const payload = data as { text: string; conversationId?: string };
       const text = payload.text;
-      
+
       // Only process if it's for the current conversation
       if (
         !payload.conversationId ||
@@ -732,7 +746,8 @@ export function AppProvider({ children }: AppProviderProps) {
             stateRef.current.llmResponseComplete &&
             !pendingLLMResponseRef.current
           ) {
-            pendingLLMResponseRef.current = stateRef.current.streamingLLMResponse;
+            pendingLLMResponseRef.current =
+              stateRef.current.streamingLLMResponse;
             checkAndUpdateConversationRef.current();
           }
 
@@ -767,7 +782,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
     wsClient.on('llm_response_chunk', (data) => {
       const payload = data as { text: string; conversationId?: string };
-      
+
       // Only process if it's for the current conversation
       if (
         !payload.conversationId ||
@@ -784,7 +799,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
     wsClient.on('llm_response_complete', (data) => {
       const payload = data as { text?: string; conversationId?: string };
-      
+
       // Only process if it's for the current conversation
       if (
         !payload.conversationId ||
@@ -794,8 +809,7 @@ export function AppProvider({ children }: AppProviderProps) {
         dispatch({ type: 'SET_RESPONSE_ID', payload: responseId });
         dispatch({ type: 'SET_LLM_COMPLETE', payload: true });
 
-        const finalText =
-          payload.text || stateRef.current.streamingLLMResponse;
+        const finalText = payload.text || stateRef.current.streamingLLMResponse;
         dispatch({ type: 'SET_STREAMING_LLM_RESPONSE', payload: finalText });
 
         // Store the LLM response and trigger conversation update
@@ -806,12 +820,12 @@ export function AppProvider({ children }: AppProviderProps) {
 
     wsClient.on('audio_stream', (data) => {
       const audioData = data as AudioStreamData & { conversationId?: string };
-      
+
       // Block all audio during conversation switch
       if (stateRef.current.switchingConversation) {
         return;
       }
-      
+
       // Only process if it's for the current conversation
       if (
         !audioData.conversationId ||
@@ -831,9 +845,9 @@ export function AppProvider({ children }: AppProviderProps) {
       if (stateRef.current.switchingConversation) {
         return;
       }
-      
+
       const payload = data as { conversationId?: string };
-      
+
       // Only process if it's for the current conversation
       if (
         !payload.conversationId ||
@@ -850,7 +864,7 @@ export function AppProvider({ children }: AppProviderProps) {
       if (stateRef.current.switchingConversation) {
         return;
       }
-      
+
       const audioData = data as {
         audio: string;
         audioFormat: string;
@@ -883,7 +897,7 @@ export function AppProvider({ children }: AppProviderProps) {
     wsClient.on('interrupt', (data) => {
       const payload = data as { reason?: string; conversationId?: string };
       const reason = payload.reason;
-      
+
       // Only process if it's for the current conversation
       if (
         !payload.conversationId ||
@@ -913,30 +927,34 @@ export function AppProvider({ children }: AppProviderProps) {
         conversationId?: string;
       };
       const { messages, removedCount, conversationId } = payload;
-      
+
       // Only process if it's for the current conversation
       if (
         !conversationId ||
         conversationId === stateRef.current.currentConversationId
       ) {
-      console.log(
-        `[AppContext] Conversation rollback - removed ${removedCount} messages`
-      );
+        console.log(
+          `[AppContext] Conversation rollback - removed ${removedCount} messages`
+        );
 
-      // Convert backend format to frontend format
-      const chatHistory = messages.map((m) => ({
-        role: m.role === 'user' ? 'learner' : 'teacher',
-        content: m.content,
-      })) as ChatMessage[];
+        // Convert backend format to frontend format
+        const chatHistory = messages.map((m) => ({
+          role: m.role === 'user' ? 'learner' : 'teacher',
+          content: m.content,
+          timestamp: m.timestamp,
+        })) as ChatMessage[];
 
-      // Update chat history to match server state
-      dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
+        // Update chat history to match server state
+        dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
 
-      // Also update storage to stay in sync
-      storage.clearConversation();
-      messages.forEach((m) => {
-        storage.addMessage(m.role === 'user' ? 'user' : 'assistant', m.content);
-      });
+        // Also update storage to stay in sync
+        storage.clearConversation();
+        messages.forEach((m) => {
+          storage.addMessage(
+            m.role === 'user' ? 'user' : 'assistant',
+            m.content
+          );
+        });
 
         // Clear any pending state
         dispatch({ type: 'SET_PENDING_TRANSCRIPTION', payload: null });
@@ -945,13 +963,17 @@ export function AppProvider({ children }: AppProviderProps) {
     });
 
     wsClient.on('flashcards_generated', (data) => {
-      const payload = data as { flashcards: Flashcard[]; conversationId?: string };
+      const payload = data as {
+        flashcards: Flashcard[];
+        conversationId?: string;
+      };
       const cards = payload.flashcards || (data as Flashcard[]);
       const conversationId = payload.conversationId;
-      
+
       // Use conversationId from payload if provided, otherwise use current
-      const targetConversationId = conversationId || stateRef.current.currentConversationId;
-      
+      const targetConversationId =
+        conversationId || stateRef.current.currentConversationId;
+
       if (targetConversationId) {
         // Conversation exists - store flashcards immediately
         const updatedFlashcards = storage.addFlashcardsForConversation(
@@ -959,7 +981,7 @@ export function AppProvider({ children }: AppProviderProps) {
           Array.isArray(cards) ? cards : [],
           stateRef.current.currentLanguage
         );
-        
+
         // Only update UI if this is for the current conversation
         if (targetConversationId === stateRef.current.currentConversationId) {
           dispatch({ type: 'SET_FLASHCARDS', payload: updatedFlashcards });
@@ -977,11 +999,14 @@ export function AppProvider({ children }: AppProviderProps) {
     });
 
     wsClient.on('feedback_generated', (data) => {
-      const payload = data as FeedbackGeneratedPayload & { conversationId?: string };
+      const payload = data as FeedbackGeneratedPayload & {
+        conversationId?: string;
+      };
       const { messageContent, feedback, conversationId } = payload;
 
       // Use conversationId from payload if provided, otherwise use current
-      const targetConversationId = conversationId || stateRef.current.currentConversationId;
+      const targetConversationId =
+        conversationId || stateRef.current.currentConversationId;
 
       // Persist feedback to storage if we have a conversation ID
       if (targetConversationId) {
@@ -989,8 +1014,14 @@ export function AppProvider({ children }: AppProviderProps) {
       }
 
       // Only update UI if it's for the current conversation
-      if (!conversationId || conversationId === stateRef.current.currentConversationId) {
-        dispatch({ type: 'SET_FEEDBACK', payload: { messageContent, feedback } });
+      if (
+        !conversationId ||
+        conversationId === stateRef.current.currentConversationId
+      ) {
+        dispatch({
+          type: 'SET_FEEDBACK',
+          payload: { messageContent, feedback },
+        });
       }
     });
 
@@ -999,7 +1030,7 @@ export function AppProvider({ children }: AppProviderProps) {
         conversationId: string;
         languageCode: string;
       };
-      
+
       // Ensure all audio is stopped
       const audioHandler = audioHandlerRef.current;
       const audioPlayer = audioPlayerRef.current;
@@ -1007,9 +1038,9 @@ export function AppProvider({ children }: AppProviderProps) {
       audioHandler.stopStreaming();
       audioPlayer.stop();
       ttsAudioPlayer.stop();
-      
+
       const storage = storageRef.current;
-      
+
       // Update language if needed
       if (languageCode && languageCode !== stateRef.current.currentLanguage) {
         dispatch({ type: 'SET_LANGUAGE', payload: languageCode });
@@ -1022,6 +1053,7 @@ export function AppProvider({ children }: AppProviderProps) {
         const chatHistory = conversationData.messages.map((m) => ({
           role: m.role === 'user' ? 'learner' : 'teacher',
           content: m.content,
+          timestamp: m.timestamp,
         })) as ChatMessage[];
         dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
 
@@ -1053,11 +1085,13 @@ export function AppProvider({ children }: AppProviderProps) {
       pendingLLMResponseRef.current = null;
       lastMessageWasTextRef.current = false;
       pendingFlashcardsRef.current = [];
-      
+
       // Hide loading screen
       dispatch({ type: 'SET_SWITCHING_CONVERSATION', payload: false });
-      
-      console.log(`Conversation ${conversationId} ready with language ${languageCode}`);
+
+      console.log(
+        `Conversation ${conversationId} ready with language ${languageCode}`
+      );
     });
 
     // Connect
@@ -1204,7 +1238,7 @@ export function AppProvider({ children }: AppProviderProps) {
       storage.addMessage('user', trimmedText);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'learner', content: trimmedText },
+        payload: { role: 'learner', content: trimmedText, timestamp: new Date().toISOString() },
       });
 
       // Flag that this was a text message so we can ignore the transcription event
@@ -1235,7 +1269,7 @@ export function AppProvider({ children }: AppProviderProps) {
         text: trimmedText,
       });
     },
-    [state.connectionStatus, state.currentLanguage]
+    [state.connectionStatus]
   );
 
   // Select a conversation from the sidebar
@@ -1266,6 +1300,7 @@ export function AppProvider({ children }: AppProviderProps) {
           role: m.role === 'learner' ? 'user' : 'assistant',
           content: m.content,
           timestamp: new Date().toISOString(),
+          feedback: m.feedback,
         })) as import('../types').ConversationMessage[];
         storage.saveConversation(
           state.currentConversationId,
@@ -1297,17 +1332,17 @@ export function AppProvider({ children }: AppProviderProps) {
         audioHandler.stopStreaming();
         audioPlayer.stop();
         ttsAudioPlayer.stop();
-        
+
         // Clear any pending audio streams by stopping again after a brief delay
         // This ensures any queued audio is also stopped
         setTimeout(() => {
           audioPlayer.stop();
           ttsAudioPlayer.stop();
         }, 50);
-        
+
         // Show loading screen
         dispatch({ type: 'SET_SWITCHING_CONVERSATION', payload: true });
-        
+
         // Don't update UI yet - wait for conversation_ready message
         // Send switch request to backend
         wsClient.send({
@@ -1316,14 +1351,14 @@ export function AppProvider({ children }: AppProviderProps) {
           languageCode: targetLanguage,
           messages: conversationData?.messages || [],
         });
-        
+
         // UI will be updated when conversation_ready is received
       } else {
-
         if (conversationData) {
           const chatHistory = conversationData.messages.map((m) => ({
             role: m.role === 'user' ? 'learner' : 'teacher',
             content: m.content,
+            timestamp: m.timestamp,
           })) as ChatMessage[];
           dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
 
@@ -1370,27 +1405,33 @@ export function AppProvider({ children }: AppProviderProps) {
   // Update ref so initialization can call selectConversation
   useEffect(() => {
     selectConversationRef.current = selectConversation;
-    
+
     // If conversations haven't been loaded yet and we have conversations in state, load the current one
-    if (!conversationsLoadedRef.current && state.conversations.length > 0 && selectConversationRef.current) {
+    if (
+      !conversationsLoadedRef.current &&
+      state.conversations.length > 0 &&
+      selectConversationRef.current
+    ) {
       const storage = storageRef.current;
-      
+
       // Get the stored current conversation ID
       let currentId = storage.getCurrentConversationId();
-      
+
       // If we have a stored conversation ID, verify it exists
       if (currentId) {
-        const conversationExists = state.conversations.find((c) => c.id === currentId);
+        const conversationExists = state.conversations.find(
+          (c) => c.id === currentId
+        );
         if (!conversationExists) {
           currentId = null;
         }
       }
-      
+
       // If no stored conversation found, use the most recent one
       if (!currentId && state.conversations.length > 0) {
         currentId = state.conversations[0].id;
       }
-      
+
       // Use selectConversation to load the conversation
       if (currentId) {
         selectConversationRef.current(currentId);
@@ -1426,6 +1467,7 @@ export function AppProvider({ children }: AppProviderProps) {
         role: m.role === 'learner' ? 'user' : 'assistant',
         content: m.content,
         timestamp: new Date().toISOString(),
+        feedback: m.feedback,
       })) as import('../types').ConversationMessage[];
       storage.saveConversation(
         state.currentConversationId,
@@ -1460,15 +1502,15 @@ export function AppProvider({ children }: AppProviderProps) {
       audioHandler.stopStreaming();
       audioPlayer.stop();
       ttsAudioPlayer.stop();
-      
+
       // Clear any pending audio streams by stopping again after a brief delay
       setTimeout(() => {
         audioPlayer.stop();
         ttsAudioPlayer.stop();
       }, 50);
-      
+
       dispatch({ type: 'SET_SWITCHING_CONVERSATION', payload: true });
-      
+
       wsClient.send({
         type: 'conversation_switch',
         conversationId: newConversation.id,
@@ -1484,6 +1526,7 @@ export function AppProvider({ children }: AppProviderProps) {
   }, [
     state.isRecording,
     state.currentConversationId,
+    state.currentLanguage,
     state.uiLanguage,
     state.connectionStatus,
   ]);

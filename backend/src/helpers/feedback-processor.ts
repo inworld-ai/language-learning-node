@@ -20,6 +20,7 @@ export interface ConversationMessage {
 export class FeedbackProcessor {
   private languageCode: string = DEFAULT_LANGUAGE_CODE;
   private languageConfig: LanguageConfig;
+  private feedbackHistory: string[] = [];
 
   constructor(languageCode: string = DEFAULT_LANGUAGE_CODE) {
     this.languageCode = languageCode;
@@ -54,11 +55,15 @@ export class FeedbackProcessor {
       conversationMessages = messages.slice(0, -1);
     }
 
+    // Get last 5 feedback items to avoid repetition
+    const previousFeedback = this.feedbackHistory.slice(-5);
+
     try {
       const input: ResponseFeedbackInput = {
         messages: conversationMessages,
         currentTranscript: currentTranscript,
         targetLanguage: this.languageConfig.name,
+        previousFeedback: previousFeedback,
       };
 
       let executionResult;
@@ -79,6 +84,12 @@ export class FeedbackProcessor {
       }
 
       const feedback = finalData as unknown as string;
+
+      // Track feedback history to avoid repetition
+      if (feedback) {
+        this.feedbackHistory.push(feedback);
+      }
+
       return feedback || '';
     } catch (error) {
       logger.error({ err: error }, 'feedback_generation_error');
@@ -87,6 +98,6 @@ export class FeedbackProcessor {
   }
 
   reset() {
-    // No state to reset for feedback processor
+    this.feedbackHistory = [];
   }
 }

@@ -227,7 +227,9 @@ export class AudioPlayer {
     if (this.nextStartTime < currentTime) {
       const underrunAmount = currentTime - this.nextStartTime;
       if (underrunAmount > 0.05) {
-        console.warn(`[AudioPlayer] Queue underrun: ${(underrunAmount * 1000).toFixed(1)}ms behind`);
+        console.warn(
+          `[AudioPlayer] Queue underrun: ${(underrunAmount * 1000).toFixed(1)}ms behind`
+        );
       }
       // Add small margin to ensure we're not scheduling in the past
       this.nextStartTime = currentTime + 0.005;
@@ -323,7 +325,7 @@ export class AudioPlayer {
       try {
         source.stop();
         source.disconnect();
-      } catch (error) {
+      } catch {
         // Source may have already ended
       }
     }
