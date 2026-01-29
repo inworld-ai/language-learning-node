@@ -38,6 +38,7 @@ create table public.conversation_messages (
   conversation_id uuid references public.conversations(id) on delete cascade not null,
   role text check (role in ('user', 'assistant')) not null,
   content text not null,
+  feedback text,
   created_at timestamptz default now() not null
 );
 
@@ -81,6 +82,8 @@ create index idx_conversations_user_lang on public.conversations(user_id, langua
 create index idx_messages_conversation on public.conversation_messages(conversation_id, created_at);
 create index idx_flashcards_conversation on public.flashcards(user_id, conversation_id);
 create index idx_flashcards_conversation_id on public.flashcards(conversation_id);
+create index idx_messages_feedback on public.conversation_messages(conversation_id)
+where feedback is not null;
 
 -- Memory indexes
 create index idx_memories_embedding on public.user_memories

@@ -65,6 +65,7 @@ type AppAction =
       type: 'SET_FEEDBACK';
       payload: { messageContent: string; feedback: string };
     }
+  | { type: 'SET_FEEDBACK_MAP'; payload: Record<string, string> }
   | { type: 'RESET_STREAMING_STATE' }
   | { type: 'RESET_CONVERSATION' }
   | { type: 'SET_CONVERSATIONS'; payload: ConversationSummary[] }
@@ -170,6 +171,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
           ...state.feedbackMap,
           [action.payload.messageContent]: action.payload.feedback,
         },
+      };
+    case 'SET_FEEDBACK_MAP':
+      return {
+        ...state,
+        feedbackMap: action.payload,
       };
     case 'RESET_STREAMING_STATE':
       return {
@@ -973,8 +979,16 @@ export function AppProvider({ children }: AppProviderProps) {
     wsClient.on('feedback_generated', (data) => {
       const payload = data as FeedbackGeneratedPayload & { conversationId?: string };
       const { messageContent, feedback, conversationId } = payload;
-      
-      // Only process feedback if it's for the current conversation
+
+      // Use conversationId from payload if provided, otherwise use current
+      const targetConversationId = conversationId || stateRef.current.currentConversationId;
+
+      // Persist feedback to storage if we have a conversation ID
+      if (targetConversationId) {
+        storage.saveFeedback(targetConversationId, messageContent, feedback);
+      }
+
+      // Only update UI if it's for the current conversation
       if (!conversationId || conversationId === stateRef.current.currentConversationId) {
         dispatch({ type: 'SET_FEEDBACK', payload: { messageContent, feedback } });
       }
@@ -1010,8 +1024,18 @@ export function AppProvider({ children }: AppProviderProps) {
           content: m.content,
         })) as ChatMessage[];
         dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
+
+        // Populate feedbackMap from message feedback fields
+        const feedbackMap: Record<string, string> = {};
+        for (const m of conversationData.messages) {
+          if (m.feedback) {
+            feedbackMap[m.content] = m.feedback;
+          }
+        }
+        dispatch({ type: 'SET_FEEDBACK_MAP', payload: feedbackMap });
       } else {
         dispatch({ type: 'SET_CHAT_HISTORY', payload: [] });
+        dispatch({ type: 'SET_FEEDBACK_MAP', payload: {} });
       }
 
       dispatch({
@@ -1302,8 +1326,18 @@ export function AppProvider({ children }: AppProviderProps) {
             content: m.content,
           })) as ChatMessage[];
           dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
+
+          // Populate feedbackMap from message feedback fields (offline mode)
+          const feedbackMap: Record<string, string> = {};
+          for (const m of conversationData.messages) {
+            if (m.feedback) {
+              feedbackMap[m.content] = m.feedback;
+            }
+          }
+          dispatch({ type: 'SET_FEEDBACK_MAP', payload: feedbackMap });
         } else {
           dispatch({ type: 'SET_CHAT_HISTORY', payload: [] });
+          dispatch({ type: 'SET_FEEDBACK_MAP', payload: {} });
         }
 
         dispatch({

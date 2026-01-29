@@ -115,6 +115,17 @@ export class HybridStorage extends Storage {
       .catch(console.error);
   }
 
+  // Save feedback to Supabase
+  saveFeedback(
+    conversationId: string,
+    messageContent: string,
+    feedback: string
+  ): void {
+    this.supabaseStorage
+      ?.updateMessageFeedback(conversationId, messageContent, feedback)
+      .catch(console.error);
+  }
+
   // Migration: upload localStorage data to Supabase
   async migrateToSupabase(languages: string[]): Promise<void> {
     if (!this.supabaseStorage || this.syncInProgress) return;
@@ -147,13 +158,23 @@ export class HybridStorage extends Storage {
                 lang
               );
             }
+
+            // Migrate per-conversation flashcards
+            const convFlashcards = super.getFlashcardsForConversation(conv.id);
+            if (convFlashcards.length > 0) {
+              await this.supabaseStorage.addFlashcardsForConversation(
+                conv.id,
+                convFlashcards,
+                lang
+              );
+            }
           } catch (e) {
             // Conversation might already exist, that's OK
             console.log(`Conversation ${conv.id} may already exist:`, e);
           }
         }
 
-        // Migrate flashcards
+        // Migrate language-level flashcards (legacy fallback)
         const flashcards = super.getFlashcards(lang);
         if (flashcards.length > 0) {
           await this.supabaseStorage.addFlashcards(flashcards, lang);

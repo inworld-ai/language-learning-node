@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 interface FeedbackTooltipProps {
@@ -16,26 +15,17 @@ export function FeedbackTooltip({
   onMouseEnter,
   onMouseLeave,
 }: FeedbackTooltipProps) {
-  const tooltipRef = useRef<HTMLDivElement>(null);
   const isLoading = feedback === null;
-
-  // Adjust position after content loads
-  useEffect(() => {
-    if (visible && tooltipRef.current && !isLoading) {
-      const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      tooltipRef.current.style.top = `${position.y - tooltipRect.height}px`;
-    }
-  }, [visible, isLoading, position.y, feedback]);
 
   if (!visible) return null;
 
   const tooltipContent = (
     <div
-      ref={tooltipRef}
       className={`feedback-tooltip ${visible ? 'visible' : ''} ${isLoading ? 'loading' : ''}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
+        transform: 'translateY(calc(-100% - 8px))',
         maxWidth: '400px',
       }}
       onMouseEnter={onMouseEnter}

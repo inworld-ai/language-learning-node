@@ -19,7 +19,6 @@ export function TranslationTooltip({
 }: TranslationTooltipProps) {
   const { translation, isLoading, translate, clearTranslation } =
     useTranslator();
-  const tooltipRef = useRef<HTMLDivElement>(null);
   const lastTextRef = useRef<string>('');
 
   useEffect(() => {
@@ -32,23 +31,15 @@ export function TranslationTooltip({
     }
   }, [visible, text, translate, clearTranslation]);
 
-  // Adjust position after content loads
-  useEffect(() => {
-    if (visible && tooltipRef.current && !isLoading) {
-      const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      tooltipRef.current.style.top = `${position.y - tooltipRect.height}px`;
-    }
-  }, [visible, isLoading, position.y, translation]);
-
   if (!visible) return null;
 
   const tooltipContent = (
     <div
-      ref={tooltipRef}
       className={`translation-tooltip ${visible ? 'visible' : ''} ${isLoading ? 'loading' : ''}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
+        transform: 'translateY(calc(-100% - 8px))',
         maxWidth: '400px',
       }}
       onMouseEnter={onMouseEnter}

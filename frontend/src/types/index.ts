@@ -26,6 +26,7 @@ export interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  feedback?: string;
 }
 
 export interface ConversationHistory {

@@ -1675,6 +1675,16 @@ body {
     pointer-events: auto;
 }
 
+.translation-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: -14px;
+    left: 0;
+    right: 0;
+    height: 14px;
+    background: transparent;
+}
+
 .translation-tooltip::after {
     content: '';
     position: absolute;
@@ -1777,6 +1787,16 @@ body {
     visibility: visible;
     transform: translateY(0);
     pointer-events: auto;
+}
+
+.feedback-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: -14px;
+    left: 0;
+    right: 0;
+    height: 14px;
+    background: transparent;
 }
 
 .feedback-tooltip::after {

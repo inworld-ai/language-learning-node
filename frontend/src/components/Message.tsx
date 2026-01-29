@@ -27,7 +27,7 @@ export function Message({ message }: MessageProps) {
         const rect = messageRef.current.getBoundingClientRect();
         setTooltipPosition({
           x: rect.left + window.scrollX,
-          y: rect.top + window.scrollY - 8,
+          y: rect.top + window.scrollY,
         });
         setShowTooltip(true);
       }
@@ -53,7 +53,9 @@ export function Message({ message }: MessageProps) {
   }, []);
 
   const handleTooltipMouseLeave = useCallback(() => {
-    setShowTooltip(false);
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowTooltip(false);
+    }, 150);
   }, []);
 
   useEffect(() => {
