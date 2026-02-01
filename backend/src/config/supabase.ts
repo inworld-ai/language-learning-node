@@ -2,7 +2,7 @@
  * Supabase Backend Client Configuration
  *
  * Sets up Supabase client for server-side operations (memories, embeddings).
- * Uses service role key for admin access (bypasses RLS).
+ * Uses secret key for admin access (bypasses RLS).
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '../utils/logger.js';
@@ -21,14 +21,14 @@ export function getSupabaseClient(): SupabaseClient | null {
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseSecretKey) {
     logger.debug('supabase_not_configured');
     return null;
   }
 
-  supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+  supabaseClient = createClient(supabaseUrl, supabaseSecretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -43,5 +43,5 @@ export function getSupabaseClient(): SupabaseClient | null {
  * Check if Supabase is configured and available.
  */
 export function isSupabaseConfigured(): boolean {
-  return !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return !!(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
 }
