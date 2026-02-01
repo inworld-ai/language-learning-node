@@ -91,7 +91,7 @@ Find your project ref in the Supabase dashboard URL: `supabase.com/dashboard/pro
 
 ```bash
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_SECRET_KEY=your_secret_key
 ```
 
 **d) Create `frontend/.env.local`:**
@@ -175,7 +175,7 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 | `NODE_ENV`                  | No       | `development` or `production`                                      |
 | `ASSEMBLY_AI_EAGERNESS`     | No       | Turn detection: `low`, `medium`, `high` (default: high)            |
 | `SUPABASE_URL`              | No       | Supabase project URL (enables memory feature)                      |
-| `SUPABASE_SERVICE_ROLE_KEY` | No       | Supabase service role key (for backend memory storage)             |
+| `SUPABASE_SECRET_KEY`       | No       | Supabase secret key (for backend memory storage)                   |
 
 ## Testing
 

@@ -520,7 +520,11 @@ export function AppProvider({ children }: AppProviderProps) {
       storage.addMessage('assistant', pendingLLMResponse);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'teacher', content: pendingLLMResponse, timestamp: new Date().toISOString() },
+        payload: {
+          role: 'teacher',
+          content: pendingLLMResponse,
+          timestamp: new Date().toISOString(),
+        },
       });
 
       const conversationHistory = storage.getConversationHistory();
@@ -557,13 +561,21 @@ export function AppProvider({ children }: AppProviderProps) {
       storage.addMessage('user', pendingTranscription);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'learner', content: pendingTranscription, timestamp: new Date().toISOString() },
+        payload: {
+          role: 'learner',
+          content: pendingTranscription,
+          timestamp: new Date().toISOString(),
+        },
       });
 
       storage.addMessage('assistant', pendingLLMResponse);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'teacher', content: pendingLLMResponse, timestamp: new Date().toISOString() },
+        payload: {
+          role: 'teacher',
+          content: pendingLLMResponse,
+          timestamp: new Date().toISOString(),
+        },
       });
 
       const conversationHistory = storage.getConversationHistory();
@@ -636,7 +648,11 @@ export function AppProvider({ children }: AppProviderProps) {
         if (lastTeacherMessage?.content !== frozenText) {
           dispatch({
             type: 'ADD_MESSAGE',
-            payload: { role: 'teacher', content: frozenText, timestamp: new Date().toISOString() },
+            payload: {
+              role: 'teacher',
+              content: frozenText,
+              timestamp: new Date().toISOString(),
+            },
           });
         }
       }
@@ -1238,7 +1254,11 @@ export function AppProvider({ children }: AppProviderProps) {
       storage.addMessage('user', trimmedText);
       dispatch({
         type: 'ADD_MESSAGE',
-        payload: { role: 'learner', content: trimmedText, timestamp: new Date().toISOString() },
+        payload: {
+          role: 'learner',
+          content: trimmedText,
+          timestamp: new Date().toISOString(),
+        },
       });
 
       // Flag that this was a text message so we can ignore the transcription event

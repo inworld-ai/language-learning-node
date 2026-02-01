@@ -11,6 +11,10 @@ export class HybridStorage extends Storage {
   private supabaseStorage: SupabaseStorage | null = null;
   private syncInProgress = false;
 
+  private logSupabaseError(operation: string, error: unknown): void {
+    console.error(`Supabase ${operation} failed:`, error);
+  }
+
   setSupabaseClient(supabase: SupabaseClient, userId: string): void {
     this.supabaseStorage = new SupabaseStorage(supabase, userId);
   }
@@ -27,7 +31,9 @@ export class HybridStorage extends Storage {
 
   override saveLanguage(languageCode: string): void {
     super.saveLanguage(languageCode);
-    this.supabaseStorage?.saveLanguage(languageCode).catch(console.error);
+    this.supabaseStorage
+      ?.saveLanguage(languageCode)
+      .catch((e) => this.logSupabaseError('saveLanguage', e));
   }
 
   override saveConversation(
@@ -38,7 +44,7 @@ export class HybridStorage extends Storage {
     super.saveConversation(conversationId, messages, languageCode);
     this.supabaseStorage
       ?.saveConversation(conversationId, messages, languageCode)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('saveConversation', e));
   }
 
   override createConversation(languageCode: string): ConversationSummary {
@@ -46,7 +52,7 @@ export class HybridStorage extends Storage {
     // Sync to Supabase using the same ID as localStorage
     this.supabaseStorage
       ?.createConversation(languageCode, summary.title, summary.id)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('createConversation', e));
     return summary;
   }
 
@@ -57,7 +63,7 @@ export class HybridStorage extends Storage {
     super.deleteConversation(conversationId, languageCode);
     this.supabaseStorage
       ?.deleteConversation(conversationId)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('deleteConversation', e));
   }
 
   override renameConversation(
@@ -68,7 +74,7 @@ export class HybridStorage extends Storage {
     super.renameConversation(conversationId, newTitle, languageCode);
     this.supabaseStorage
       ?.renameConversation(conversationId, newTitle)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('renameConversation', e));
   }
 
   override addFlashcards(
@@ -78,13 +84,15 @@ export class HybridStorage extends Storage {
     const result = super.addFlashcards(newFlashcards, languageCode);
     this.supabaseStorage
       ?.addFlashcards(newFlashcards, languageCode)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('addFlashcards', e));
     return result;
   }
 
   override clearFlashcards(languageCode: string): void {
     super.clearFlashcards(languageCode);
-    this.supabaseStorage?.clearFlashcards(languageCode).catch(console.error);
+    this.supabaseStorage
+      ?.clearFlashcards(languageCode)
+      .catch((e) => this.logSupabaseError('clearFlashcards', e));
   }
 
   // Per-conversation flashcard methods
@@ -104,7 +112,7 @@ export class HybridStorage extends Storage {
         newFlashcards,
         languageCode
       )
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('addFlashcardsForConversation', e));
     return result;
   }
 
@@ -112,7 +120,7 @@ export class HybridStorage extends Storage {
     super.clearFlashcardsForConversation(conversationId);
     this.supabaseStorage
       ?.clearFlashcardsForConversation(conversationId)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('clearFlashcardsForConversation', e));
   }
 
   // Save feedback to Supabase
@@ -123,7 +131,7 @@ export class HybridStorage extends Storage {
   ): void {
     this.supabaseStorage
       ?.updateMessageFeedback(conversationId, messageContent, feedback)
-      .catch(console.error);
+      .catch((e) => this.logSupabaseError('saveFeedback', e));
   }
 
   // Migration: upload localStorage data to Supabase

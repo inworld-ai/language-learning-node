@@ -5,6 +5,10 @@ import type {
   ConversationData,
   ConversationMessage,
 } from '../types';
+import { DEFAULT_LANGUAGE_CODE } from '../config/languages';
+
+const MAX_CONVERSATION_MESSAGES = 80;
+const MAX_FLASHCARDS_PER_LANGUAGE = 100;
 
 export class Storage {
   private storageKey = 'aprende-app-state';
@@ -20,10 +24,10 @@ export class Storage {
   // Language preference methods
   getLanguage(): string {
     try {
-      return localStorage.getItem(this.languageKey) || 'es';
+      return localStorage.getItem(this.languageKey) || DEFAULT_LANGUAGE_CODE;
     } catch (error) {
       console.error('Failed to load language from localStorage:', error);
-      return 'es';
+      return DEFAULT_LANGUAGE_CODE;
     }
   }
 
@@ -37,10 +41,10 @@ export class Storage {
 
   getUiLanguage(): string {
     try {
-      return localStorage.getItem(this.uiLanguageKey) || 'es';
+      return localStorage.getItem(this.uiLanguageKey) || DEFAULT_LANGUAGE_CODE;
     } catch (error) {
       console.error('Failed to load UI language from localStorage:', error);
-      return 'es';
+      return DEFAULT_LANGUAGE_CODE;
     }
   }
 
@@ -104,8 +108,8 @@ export class Storage {
     history.messages.push(message);
 
     // Truncate to keep only last 40 turns (80 messages)
-    if (history.messages.length > 80) {
-      history.messages = history.messages.slice(-80);
+    if (history.messages.length > MAX_CONVERSATION_MESSAGES) {
+      history.messages = history.messages.slice(-MAX_CONVERSATION_MESSAGES);
     }
 
     try {
@@ -384,16 +388,16 @@ export class Storage {
       const serializedFlashcards = localStorage.getItem(key);
       if (serializedFlashcards === null) {
         // Try to migrate from old format if no language-specific data exists
-        if (languageCode === 'es') {
+        if (languageCode === DEFAULT_LANGUAGE_CODE) {
           const oldFlashcards = localStorage.getItem(this.flashcardsKey);
           if (oldFlashcards) {
             const parsed = JSON.parse(oldFlashcards) as Flashcard[];
             const migrated = parsed.map((card) => ({
               ...card,
               targetWord: card.targetWord || card.spanish || '',
-              languageCode: 'es',
+              languageCode: DEFAULT_LANGUAGE_CODE,
             }));
-            this.saveFlashcards(migrated, 'es');
+            this.saveFlashcards(migrated, DEFAULT_LANGUAGE_CODE);
             return migrated;
           }
         }
@@ -420,6 +424,7 @@ export class Storage {
     const existingFlashcards = this.getFlashcards(languageCode);
 
     // Filter out duplicates
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const uniqueNewFlashcards = newFlashcards.filter((newCard) => {
       const newWord = newCard.targetWord || newCard.spanish || '';
       return !existingFlashcards.some((existing) => {
@@ -429,6 +434,7 @@ export class Storage {
     });
 
     // Add language code to new flashcards
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const flashcardsWithLanguage = uniqueNewFlashcards.map((card) => ({
       ...card,
       targetWord: card.targetWord || card.spanish || '',
@@ -440,9 +446,12 @@ export class Storage {
       ...flashcardsWithLanguage,
     ];
 
-    // Keep only the last 100 flashcards per language
-    if (updatedFlashcards.length > 100) {
-      updatedFlashcards.splice(0, updatedFlashcards.length - 100);
+    // Keep only the last flashcards per language
+    if (updatedFlashcards.length > MAX_FLASHCARDS_PER_LANGUAGE) {
+      updatedFlashcards.splice(
+        0,
+        updatedFlashcards.length - MAX_FLASHCARDS_PER_LANGUAGE
+      );
     }
 
     this.saveFlashcards(updatedFlashcards, languageCode);
@@ -492,6 +501,7 @@ export class Storage {
       this.getFlashcardsForConversation(conversationId);
 
     // Filter out duplicates
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const uniqueNewFlashcards = newFlashcards.filter((newCard) => {
       const newWord = newCard.targetWord || newCard.spanish || '';
       return !existingFlashcards.some((existing) => {
@@ -501,6 +511,7 @@ export class Storage {
     });
 
     // Add conversation ID and language code to new flashcards
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const flashcardsWithIds = uniqueNewFlashcards.map((card) => ({
       ...card,
       targetWord: card.targetWord || card.spanish || '',
@@ -510,9 +521,12 @@ export class Storage {
 
     const updatedFlashcards = [...existingFlashcards, ...flashcardsWithIds];
 
-    // Keep only the last 100 flashcards per conversation
-    if (updatedFlashcards.length > 100) {
-      updatedFlashcards.splice(0, updatedFlashcards.length - 100);
+    // Keep only the last flashcards per conversation
+    if (updatedFlashcards.length > MAX_FLASHCARDS_PER_LANGUAGE) {
+      updatedFlashcards.splice(
+        0,
+        updatedFlashcards.length - MAX_FLASHCARDS_PER_LANGUAGE
+      );
     }
 
     this.saveFlashcardsForConversation(conversationId, updatedFlashcards);

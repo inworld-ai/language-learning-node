@@ -13,7 +13,7 @@ import { GraphTypes } from '@inworld/runtime/graph';
 
 import { ConversationGraphWrapper } from '../graphs/conversation-graph.js';
 import { MultimodalStreamManager } from './multimodal-stream-manager.js';
-import { decodeBase64ToFloat32 } from './audio-utils.js';
+import { decodeBase64ToFloat32, convertAudioToBase64 } from './audio-utils.js';
 import { ConnectionsMap } from '../types/index.js';
 import {
   getLanguageConfig,
@@ -22,6 +22,9 @@ import {
 } from '../config/languages.js';
 import { serverConfig } from '../config/server.js';
 import { createSessionLogger } from '../utils/logger.js';
+
+const RECENT_MESSAGES_FOR_FLASHCARDS = 6;
+const RECENT_MESSAGES_FOR_MEMORY = 10;
 
 export class ConnectionManager {
   private sessionId: string;
@@ -430,7 +433,7 @@ export class ConnectionManager {
 
               // Convert audio to base64 for WebSocket transmission
               // Use ttsSampleRate as fallback (not inputSampleRate which is for microphone input)
-              const audioResult = this.convertAudioToBase64(chunk.audio);
+              const audioResult = convertAudioToBase64(chunk.audio);
               if (audioResult) {
                 this.sendToClient({
                   type: 'audio_stream',
@@ -648,38 +651,6 @@ export class ConnectionManager {
   }
 
   /**
-   * Convert audio data to base64 string for WebSocket transmission
-   * Inworld TTS returns Float32 PCM in [-1.0, 1.0] range - send directly to preserve quality
-   */
-  private convertAudioToBase64(audio: {
-    data?: string | number[] | Float32Array;
-    sampleRate?: number;
-  }): { base64: string; format: 'float32' | 'int16' } | null {
-    if (!audio.data) return null;
-
-    if (typeof audio.data === 'string') {
-      // Already base64 - assume Int16 format for backwards compatibility
-      return { base64: audio.data, format: 'int16' };
-    }
-
-    // Inworld SDK returns audio.data as an array of raw bytes (0-255)
-    // These bytes ARE the Float32 PCM data in IEEE 754 format (4 bytes per sample)
-    // Simply pass them through as-is, and frontend interprets as Float32Array
-    const audioBuffer = Array.isArray(audio.data)
-      ? Buffer.from(audio.data) // Treat each array element as a byte
-      : Buffer.from(
-          audio.data.buffer,
-          audio.data.byteOffset,
-          audio.data.byteLength
-        );
-
-    return {
-      base64: audioBuffer.toString('base64'),
-      format: 'float32', // Frontend will interpret bytes as Float32Array
-    };
-  }
-
-  /**
    * Send message to WebSocket client
    */
   private sendToClient(message: Record<string, unknown>): void {
@@ -701,10 +672,12 @@ export class ConnectionManager {
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
-    const recentMessages = connection.state.messages.slice(-6).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const recentMessages = connection.state.messages
+      .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Track pending flashcard generation
     this.pendingFlashcardGeneration = this.flashcardCallback(recentMessages)
@@ -733,10 +706,12 @@ export class ConnectionManager {
 
     if (!lastUserMessage) return;
 
-    const recentMessages = messages.slice(-6).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const recentMessages = messages
+      .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Track pending feedback generation
     this.pendingFeedbackGeneration = this.feedbackCallback(
@@ -761,10 +736,12 @@ export class ConnectionManager {
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
-    const recentMessages = connection.state.messages.slice(-10).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const recentMessages = connection.state.messages
+      .slice(-RECENT_MESSAGES_FOR_MEMORY)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Track pending memory generation
     this.pendingMemoryGeneration = this.memoryCallback(recentMessages)

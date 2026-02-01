@@ -222,6 +222,7 @@ export class SupabaseStorage {
     flashcards: Flashcard[],
     languageCode: string
   ): Promise<void> {
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const toInsert = flashcards.map((f) => ({
       user_id: this.userId,
       language_code: languageCode,
@@ -273,6 +274,7 @@ export class SupabaseStorage {
     flashcards: Flashcard[],
     languageCode: string
   ): Promise<void> {
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const toInsert = flashcards.map((f) => ({
       user_id: this.userId,
       conversation_id: conversationId,

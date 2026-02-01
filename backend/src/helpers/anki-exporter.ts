@@ -16,6 +16,7 @@ export class AnkiExporter {
     // Add each flashcard as a card
     flashcards.forEach((flashcard) => {
       // Support both new 'targetWord' and legacy 'spanish' field
+      // @deprecated Legacy 'spanish' field support - remove when all data migrated
       const targetWord =
         flashcard.targetWord || (flashcard as { spanish?: string }).spanish;
 

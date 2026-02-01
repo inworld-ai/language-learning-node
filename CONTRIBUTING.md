@@ -1,4 +1,4 @@
-# Contributing to Language Learning App
+# Contributing to Language Learning Node
 
 Thank you for your interest in contributing to the Language Learning App! This document provides guidelines and instructions for contributing.
 
@@ -18,8 +18,8 @@ Thank you for your interest in contributing to the Language Learning App! This d
 2. **Clone your fork**:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/language-learning-app.git
-   cd language-learning-app
+   git clone https://github.com/YOUR_USERNAME/language-learning-node.git
+   cd language-learning-node
    ```
 
 3. **Install dependencies**:
@@ -105,17 +105,31 @@ Thank you for your interest in contributing to the Language Learning App! This d
 ### File Structure
 
 ```
-language-learning-app/
+language-learning-node/
 ├── backend/              # Backend TypeScript code
-│   ├── graphs/           # Graph definitions
-│   ├── helpers/          # Helper utilities
-│   ├── models/           # AI models
-│   └── server.ts         # Backend server
-├── frontend/             # Frontend application (JavaScript)
-│   ├── js/               # Frontend JavaScript
-│   ├── styles/           # CSS styles
-│   └── index.html        # Main HTML file
-└── dist/                 # Compiled JavaScript (generated)
+│   ├── src/
+│   │   ├── __tests__/    # Backend unit tests
+│   │   ├── config/       # Language & server configuration
+│   │   ├── graphs/       # Inworld Runtime conversation graphs
+│   │   ├── helpers/      # Audio utils, connection management
+│   │   ├── prompts/      # Nunjucks prompt templates
+│   │   ├── services/     # Server components
+│   │   ├── utils/        # Logger
+│   │   └── server.ts     # Entry point
+│   └── vitest.config.ts  # Backend test config
+├── frontend/             # Frontend React application
+│   ├── src/
+│   │   ├── __tests__/    # Frontend unit tests
+│   │   ├── components/   # React components
+│   │   ├── context/      # App state & auth
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── services/     # WebSocket client, audio, storage
+│   │   ├── styles/       # CSS
+│   │   └── types/        # TypeScript types
+│   └── vitest.config.ts  # Frontend test config
+├── supabase/
+│   └── migrations/       # Database schema
+└── deploy/               # Deployment configurations
 ```
 
 ## Pull Request Process
@@ -170,7 +184,7 @@ For feature requests, please include:
 
 ## Questions?
 
-- **GitHub Issues**: [Open an issue](https://github.com/inworld-ai/language-learning-app/issues)
+- **GitHub Issues**: [Open an issue](https://github.com/inworld-ai/language-learning-node/issues)
 
 ## License
 
