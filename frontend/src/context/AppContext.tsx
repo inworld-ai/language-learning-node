@@ -31,9 +31,13 @@ const getWebSocketUrl = (): string => {
     // Convert https:// to wss:// or http:// to ws://
     return backendUrl.replace(/^http/, 'ws');
   }
-  // Local development: use same host with port 3000
+  // Same-origin: use current host (works in production when backend serves frontend)
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.hostname}:3000`;
+  // In dev mode, backend runs on port 3000; in production, same port
+  const host = import.meta.env.DEV
+    ? `${window.location.hostname}:3000`
+    : window.location.host;
+  return `${protocol}//${host}`;
 };
 
 // Helper for API URL for Cloud Run deployment
@@ -938,7 +942,7 @@ export function AppProvider({ children }: AppProviderProps) {
     wsClient.on('conversation_rollback', (data) => {
       // Server removed messages due to utterance continuation - sync frontend state
       const payload = data as {
-        messages: Array<{ role: string; content: string }>;
+        messages: Array<{ role: string; content: string; timestamp?: string }>;
         removedCount: number;
         conversationId?: string;
       };

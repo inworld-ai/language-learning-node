@@ -14,6 +14,8 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
@@ -55,6 +57,20 @@ app.get('/health', (_req, res) => {
     .status(200)
     .json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
+
+// Serve frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+
+  // Serve static assets
+  app.use(express.static(frontendDistPath));
+
+  // SPA fallback - serve index.html for non-API routes
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // WebSocket handlers
 setupWebSocketHandlers(wss);

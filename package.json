@@ -1,0 +1,22 @@
+{
+  "name": "language-learning-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build": "npm run build:frontend && npm run build:backend",
+    "start": "npm run start --prefix backend",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "postinstall": "npm run install:all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
