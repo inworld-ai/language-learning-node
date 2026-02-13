@@ -27,21 +27,15 @@ cd language-learning-node
 
 ### Step 2: Install Dependencies
 
-Frontend:
 ```bash
-cd frontend
 npm install
 ```
 
-Backend:
-```bash
-cd backend
-npm install
-```
+This installs dependencies for the root, backend, and frontend automatically.
 
 ### Step 3: Configure Environment Variables
 
-Create a `.env` file in the /backend directory:
+Create a `backend/.env` file:
 
 ```bash
 INWORLD_API_KEY=your_inworld_base64_key
@@ -57,17 +51,22 @@ ASSEMBLY_AI_API_KEY=your_assemblyai_key
 
 **For development** (with auto-reload on file changes):
 
-In frontend dir:
 ```bash
 npm run dev
 ```
 
-In backend dir:
-```bash
-npm run dev
-```
+This starts both the backend (port 3000) and frontend dev server (port 5173) concurrently.
 
 Open [http://localhost:5173](http://localhost:5173)
+
+**For production**:
+
+```bash
+npm run build
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000)
 
 ### Step 5 (Optional): Set Up Supabase for Auth & Memory
 
@@ -87,7 +86,7 @@ This creates all tables, indexes, RLS policies, and the `match_memories` functio
 
 Find your project ref in the Supabase dashboard URL: `supabase.com/dashboard/project/YOUR_PROJECT_REF`
 
-**c) Add Supabase variables to `.env` (backend):**
+**c) Add Supabase variables to `backend/.env`:**
 
 ```bash
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -110,31 +109,32 @@ language-learning-node/
 ├── backend/
 │   ├── src/
 │   │   ├── __tests__/        # Backend unit tests
-│   │   ├── config/           # Language & server configuration
+│   │   ├── config/           # Language, LLM & server configuration
 │   │   ├── graphs/           # Inworld Runtime conversation graphs
 │   │   │   ├── configs/      # Graph JSON configurations
 │   │   │   └── nodes/        # Custom graph nodes
 │   │   ├── helpers/          # Audio utils, connection management
 │   │   ├── prompts/          # Nunjucks prompt templates
-│   │   ├── services/         # Server components
+│   │   ├── services/         # Server components (WS handler, API routes)
+│   │   ├── types/            # TypeScript types
 │   │   ├── utils/            # Logger
 │   │   └── server.ts         # Entry point
-│   ├── .env                  # Backend environment variables
 │   └── vitest.config.ts      # Backend test config
 ├── frontend/
 │   ├── src/
 │   │   ├── __tests__/        # Frontend unit tests
 │   │   ├── components/       # React components
+│   │   ├── config/           # Language configuration
 │   │   ├── context/          # App state & auth
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── services/         # WebSocket client, audio, storage
 │   │   ├── styles/           # CSS
 │   │   └── types/            # TypeScript types
-│   ├── .env.local            # Frontend environment variables
 │   └── vitest.config.ts      # Frontend test config
 ├── supabase/
 │   └── migrations/           # Database schema
-└── deploy/                   # Deployment configurations
+├── render.yaml               # Render deployment config
+└── package.json              # Monorepo scripts
 ```
 
 ## Architecture
@@ -179,13 +179,18 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 
 ## Testing
 
-Run the test suite to verify core functionality:
-
 ```bash
-npm test              # Run all tests
-npm run test:backend  # Backend tests only
-npm run test:frontend # Frontend tests only
-npm run test:watch    # Watch mode for backend
+# Run all tests (from backend/)
+cd backend && npm test
+
+# Backend tests only
+npm test --prefix backend -- --config vitest.config.ts
+
+# Frontend tests only
+npm test --prefix frontend
+
+# Watch mode (backend)
+npm run test:watch --prefix backend
 ```
 
 Tests cover critical paths: audio conversion, language configuration, storage persistence, and flashcard deduplication.
