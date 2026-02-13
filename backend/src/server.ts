@@ -43,7 +43,6 @@ app.use(
   cors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
     methods: ['GET', 'POST', 'OPTIONS'],
-    credentials: true,
   })
 );
 
