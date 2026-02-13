@@ -217,7 +217,10 @@ export class WebSocketClient {
         break;
 
       case 'flashcards_generated':
-        this.emit('flashcards_generated', message.flashcards as Flashcard[]);
+        this.emit('flashcards_generated', {
+          flashcards: message.flashcards as Flashcard[],
+          conversationId: message.conversationId,
+        });
         break;
 
       case 'feedback_generated':

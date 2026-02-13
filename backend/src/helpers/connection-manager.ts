@@ -73,6 +73,9 @@ export class ConnectionManager {
   private isProcessingResponse: boolean = false;
   private currentTranscript: string = '';
 
+  // Snapshot of conversationId when processing started, used to detect stale triggers
+  private processingConversationId: string | null = null;
+
   constructor(
     sessionId: string,
     ws: WebSocket,
@@ -640,6 +643,7 @@ export class ConnectionManager {
   private markProcessingStart(transcript: string): void {
     this.isProcessingResponse = true;
     this.currentTranscript = transcript;
+    this.processingConversationId = this.conversationId;
   }
 
   /**
@@ -668,6 +672,10 @@ export class ConnectionManager {
    */
   private triggerFlashcardGeneration(): void {
     if (!this.flashcardCallback) return;
+    if (this.conversationId !== this.processingConversationId) {
+      this.logger.info('skipping_flashcard_generation_conversation_changed');
+      return;
+    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
@@ -694,6 +702,10 @@ export class ConnectionManager {
    */
   private triggerFeedbackGeneration(): void {
     if (!this.feedbackCallback) return;
+    if (this.conversationId !== this.processingConversationId) {
+      this.logger.info('skipping_feedback_generation_conversation_changed');
+      return;
+    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
@@ -732,6 +744,10 @@ export class ConnectionManager {
    */
   private triggerMemoryGeneration(): void {
     if (!this.memoryCallback) return;
+    if (this.conversationId !== this.processingConversationId) {
+      this.logger.info('skipping_memory_generation_conversation_changed');
+      return;
+    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
