@@ -1571,6 +1571,10 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    .header-logo {
+        display: none;
+    }
+
     /* Sidebar mobile - slide-out drawer */
     .sidebar {
         position: fixed;

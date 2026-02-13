@@ -100,17 +100,19 @@ export function Header() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <h1 className="header-logo">Inworld Language Tutor</h1>
+          <h1 className="header-logo">Inworld Immersive Tutor</h1>
         </div>
 
         <div className="header-right">
-          {/* Connection Status - Always Visible */}
-          <div className="header-connection-status">
-            <span className={`status-dot ${connectionStatus}`} />
-            <span className="connection-status-text">
-              {statusMessages[connectionStatus] || 'Unknown'}
-            </span>
-          </div>
+          {/* Connection Status - Only show when NOT connected */}
+          {connectionStatus !== 'connected' && (
+            <div className="header-connection-status">
+              <span className={`status-dot ${connectionStatus}`} />
+              <span className="connection-status-text">
+                {statusMessages[connectionStatus] || 'Unknown'}
+              </span>
+            </div>
+          )}
 
           {/* Auth Section - Always Visible */}
           {isConfigured && (
