@@ -35,10 +35,10 @@ import { createGracefulShutdown } from './services/shutdown.js';
 // Initialize Express and servers
 const app = express();
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 10 * 1024 * 1024 });
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(
   cors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',

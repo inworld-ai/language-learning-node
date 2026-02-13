@@ -52,7 +52,7 @@ export const llmConfig = {
     stream: false,
     textGenerationConfig: {
       maxNewTokens: 2500,
-      maxPromptLength: 100,
+      maxPromptLength: 2000,
       temperature: 1,
       topP: 1,
       repetitionPenalty: 1,

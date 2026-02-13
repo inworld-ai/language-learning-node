@@ -101,7 +101,7 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           1,
           userContext
         );
-        if (flashcards.length > 0) {
+        if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
           const conversationId = connectionManager.getConversationId();
           ws.send(
             JSON.stringify({
@@ -150,7 +150,7 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
             userContext
           );
 
-          if (feedback) {
+          if (feedback && ws.readyState === WebSocket.OPEN) {
             const conversationId = connectionManager.getConversationId();
             ws.send(
               JSON.stringify({
