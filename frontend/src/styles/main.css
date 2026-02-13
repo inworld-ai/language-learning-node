@@ -1043,6 +1043,8 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
     color: #6b7280;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .restart-button:hover:not(:disabled) {
@@ -1067,6 +1069,8 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
     color: #6b7280;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .mic-button:hover:not(:disabled) {
@@ -1329,6 +1333,7 @@ body {
     cursor: pointer;
     perspective: 1000px;
     flex: 0 0 auto;
+    touch-action: manipulation;
 }
 
 .flashcard-inner {
@@ -1362,6 +1367,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow-y: auto;
     align-items: center;
     box-sizing: border-box;
 }
@@ -1369,7 +1375,7 @@ body {
 .flashcard-front {
     background: #f3f4f6;
     color: #1a1a1a;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 /* Pronounce button on flashcard */
@@ -1616,7 +1622,7 @@ body {
         padding: 16px;
     }
 
-    .container {
+    .main > .container {
         padding: 0 16px;
         height: 100%;
     }
