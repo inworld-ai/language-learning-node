@@ -89,7 +89,7 @@ body {
     gap: 8px;
     flex: 1;
     padding: 10px 16px;
-    background: #1a1a1a;
+    background: #025740;
     color: #ffffff;
     border: none;
     border-radius: 8px 0 0 8px;
@@ -101,7 +101,7 @@ body {
 }
 
 .new-chat-button:hover {
-    background: #333333;
+    background: #037a56;
 }
 
 .new-chat-lang-button {
@@ -109,7 +109,7 @@ body {
     align-items: center;
     gap: 4px;
     padding: 10px 12px;
-    background: #1a1a1a;
+    background: #025740;
     color: #ffffff;
     border: none;
     border-left: 1px solid rgba(255, 255, 255, 0.2);
@@ -119,7 +119,7 @@ body {
 }
 
 .new-chat-lang-button:hover {
-    background: #333333;
+    background: #037a56;
 }
 
 .new-chat-lang-button .lang-flag {
