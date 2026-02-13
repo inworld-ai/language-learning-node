@@ -1627,6 +1627,62 @@ body {
     }
 }
 
+/* Floating Action Buttons */
+.floating-buttons {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 1000;
+}
+
+.fab-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fab-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.fab-github {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    background: #1a1a1a;
+    color: #ffffff;
+    align-self: flex-end;
+}
+
+.fab-render {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 20px;
+    background: #1a1a1a;
+    color: #ffffff;
+    font-family: 'Roboto Serif', Georgia, serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+@media (max-width: 768px) {
+    .floating-buttons {
+        bottom: 16px;
+        right: 16px;
+    }
+}
+
 /* Scrollbar Styling */
 .messages::-webkit-scrollbar,
 .flashcards-grid::-webkit-scrollbar {
