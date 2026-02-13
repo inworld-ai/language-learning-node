@@ -32,7 +32,7 @@
             "llm_component_id": "llm_node_llm_component",
             "text_generation_config": {
               "max_new_tokens": 2500,
-              "max_prompt_length": 100,
+              "max_prompt_length": 2000,
               "temperature": 1,
               "top_p": 1,
               "repetition_penalty": 1,
@@ -70,12 +70,8 @@
         "to_node": "flashcard-parser"
       }
     ],
-    "end_nodes": [
-      "flashcard-parser"
-    ],
-    "start_nodes": [
-      "flashcard-prompt-builder"
-    ]
+    "end_nodes": ["flashcard-parser"],
+    "start_nodes": ["flashcard-prompt-builder"]
   },
   "components": [
     {
