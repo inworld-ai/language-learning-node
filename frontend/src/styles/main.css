@@ -1661,16 +1661,7 @@ body {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.fab-github {
-    width: 44px;
-    height: 44px;
-    border-radius: 22px;
-    background: #1a1a1a;
-    color: #ffffff;
-    align-self: flex-end;
-}
-
-.fab-render {
+.fab-labeled {
     height: 40px;
     padding: 0 16px;
     border-radius: 20px;
@@ -1680,6 +1671,8 @@ body {
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.02em;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 @media (max-width: 768px) {

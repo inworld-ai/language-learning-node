@@ -8,7 +8,7 @@ export function Header() {
   const { user, isLoading, isConfigured, signUp, signIn, signOut } = useAuth();
 
   const [showAuthForm, setShowAuthForm] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
