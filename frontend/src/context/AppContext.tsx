@@ -995,11 +995,18 @@ export function AppProvider({ children }: AppProviderProps) {
         conversationId || stateRef.current.currentConversationId;
 
       if (targetConversationId) {
-        // Conversation exists - store flashcards immediately
+        // Look up the conversation's language rather than using currentLanguage,
+        // which may have already changed if the user switched conversations
+        const conversation = stateRef.current.conversations.find(
+          (c) => c.id === targetConversationId
+        );
+        const languageCode =
+          conversation?.languageCode || stateRef.current.currentLanguage;
+
         const updatedFlashcards = storage.addFlashcardsForConversation(
           targetConversationId,
           Array.isArray(cards) ? cards : [],
-          stateRef.current.currentLanguage
+          languageCode
         );
 
         // Only update UI if this is for the current conversation

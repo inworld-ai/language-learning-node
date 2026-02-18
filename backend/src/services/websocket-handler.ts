@@ -75,55 +75,58 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     });
 
     // Set up flashcard generation callback
-    connectionManager.setFlashcardCallback(async (messages) => {
-      if (isShuttingDown()) {
-        logger.debug(
-          { connectionId },
-          'skipping_flashcard_generation_shutting_down'
-        );
-        return;
-      }
-
-      try {
-        const attrs = connectionAttributes.get(connectionId) || {};
-        const userAttributes: Record<string, string> = {
-          timezone: attrs.timezone || '',
-        };
-
-        const targetingKey = attrs.userId || connectionId;
-        const userContext = {
-          attributes: userAttributes,
-          targetingKey,
-        };
-
-        const flashcards = await flashcardProcessor.generateFlashcards(
-          messages,
-          1,
-          userContext
-        );
-        if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
-          const conversationId = connectionManager.getConversationId();
-          ws.send(
-            JSON.stringify({
-              type: 'flashcards_generated',
-              flashcards,
-              conversationId: conversationId || null,
-            })
+    // conversationId is captured at trigger time, not read from mutable state
+    connectionManager.setFlashcardCallback(
+      async (messages, conversationId) => {
+        if (isShuttingDown()) {
+          logger.debug(
+            { connectionId },
+            'skipping_flashcard_generation_shutting_down'
           );
+          return;
         }
-      } catch (error) {
-        if (!isShuttingDown()) {
-          logger.error(
-            { err: error, connectionId },
-            'flashcard_generation_error'
+
+        try {
+          const attrs = connectionAttributes.get(connectionId) || {};
+          const userAttributes: Record<string, string> = {
+            timezone: attrs.timezone || '',
+          };
+
+          const targetingKey = attrs.userId || connectionId;
+          const userContext = {
+            attributes: userAttributes,
+            targetingKey,
+          };
+
+          const flashcards = await flashcardProcessor.generateFlashcards(
+            messages,
+            1,
+            userContext
           );
+          if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: 'flashcards_generated',
+                flashcards,
+                conversationId: conversationId || null,
+              })
+            );
+          }
+        } catch (error) {
+          if (!isShuttingDown()) {
+            logger.error(
+              { err: error, connectionId },
+              'flashcard_generation_error'
+            );
+          }
         }
       }
-    });
+    );
 
     // Set up feedback generation callback
+    // conversationId is captured at trigger time, not read from mutable state
     connectionManager.setFeedbackCallback(
-      async (messages, currentTranscript) => {
+      async (messages, currentTranscript, conversationId) => {
         if (isShuttingDown()) {
           logger.debug(
             { connectionId },
@@ -151,7 +154,6 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           );
 
           if (feedback && ws.readyState === WebSocket.OPEN) {
-            const conversationId = connectionManager.getConversationId();
             ws.send(
               JSON.stringify({
                 type: 'feedback_generated',
@@ -173,7 +175,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     );
 
     // Set up memory generation callback
-    connectionManager.setMemoryCallback(async (messages) => {
+    // conversationId is captured at trigger time (unused here but kept for consistency)
+    connectionManager.setMemoryCallback(async (messages, _conversationId) => {
       if (isShuttingDown()) {
         return;
       }

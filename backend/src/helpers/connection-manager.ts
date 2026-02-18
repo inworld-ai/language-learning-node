@@ -48,22 +48,29 @@ export class ConnectionManager {
   private readonly RESTART_COOLDOWN_MS = 5000; // Prevent rapid restart loops
   private readonly RESTART_RESET_THRESHOLD_MS = 30000; // Reset attempts after stable operation
 
-  // Callback for flashcard processing
+  // Callback for flashcard processing (conversationId captured at trigger time)
   private flashcardCallback:
-    | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
-    | null = null;
-
-  // Callback for feedback generation
-  private feedbackCallback:
     | ((
         messages: Array<{ role: string; content: string }>,
-        currentTranscript: string
+        conversationId: string | null
       ) => Promise<void>)
     | null = null;
 
-  // Callback for memory creation
+  // Callback for feedback generation (conversationId captured at trigger time)
+  private feedbackCallback:
+    | ((
+        messages: Array<{ role: string; content: string }>,
+        currentTranscript: string,
+        conversationId: string | null
+      ) => Promise<void>)
+    | null = null;
+
+  // Callback for memory creation (conversationId captured at trigger time)
   private memoryCallback:
-    | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
+    | ((
+        messages: Array<{ role: string; content: string }>,
+        conversationId: string | null
+      ) => Promise<void>)
     | null = null;
 
   // User ID for memory retrieval/creation
@@ -680,6 +687,9 @@ export class ConnectionManager {
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
+    // Capture conversationId now - don't rely on reading it later after async work
+    const snapshotConversationId = this.processingConversationId;
+
     const recentMessages = connection.state.messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
       .map((m) => ({
@@ -688,7 +698,10 @@ export class ConnectionManager {
       }));
 
     // Track pending flashcard generation
-    this.pendingFlashcardGeneration = this.flashcardCallback(recentMessages)
+    this.pendingFlashcardGeneration = this.flashcardCallback(
+      recentMessages,
+      snapshotConversationId
+    )
       .catch((error) => {
         this.logger.error({ err: error }, 'flashcard_generation_trigger_error');
       })
@@ -718,6 +731,9 @@ export class ConnectionManager {
 
     if (!lastUserMessage) return;
 
+    // Capture conversationId now - don't rely on reading it later after async work
+    const snapshotConversationId = this.processingConversationId;
+
     const recentMessages = messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
       .map((m) => ({
@@ -728,7 +744,8 @@ export class ConnectionManager {
     // Track pending feedback generation
     this.pendingFeedbackGeneration = this.feedbackCallback(
       recentMessages,
-      lastUserMessage.content
+      lastUserMessage.content,
+      snapshotConversationId
     )
       .catch((error) => {
         this.logger.error({ err: error }, 'feedback_generation_trigger_error');
@@ -752,6 +769,9 @@ export class ConnectionManager {
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
+    // Capture conversationId now - don't rely on reading it later after async work
+    const snapshotConversationId = this.processingConversationId;
+
     const recentMessages = connection.state.messages
       .slice(-RECENT_MESSAGES_FOR_MEMORY)
       .map((m) => ({
@@ -760,7 +780,10 @@ export class ConnectionManager {
       }));
 
     // Track pending memory generation
-    this.pendingMemoryGeneration = this.memoryCallback(recentMessages)
+    this.pendingMemoryGeneration = this.memoryCallback(
+      recentMessages,
+      snapshotConversationId
+    )
       .catch((error) => {
         this.logger.error({ err: error }, 'memory_generation_trigger_error');
       })
@@ -775,7 +798,8 @@ export class ConnectionManager {
 
   setFlashcardCallback(
     callback: (
-      messages: Array<{ role: string; content: string }>
+      messages: Array<{ role: string; content: string }>,
+      conversationId: string | null
     ) => Promise<void>
   ): void {
     this.flashcardCallback = callback;
@@ -784,7 +808,8 @@ export class ConnectionManager {
   setFeedbackCallback(
     callback: (
       messages: Array<{ role: string; content: string }>,
-      currentTranscript: string
+      currentTranscript: string,
+      conversationId: string | null
     ) => Promise<void>
   ): void {
     this.feedbackCallback = callback;
@@ -792,7 +817,8 @@ export class ConnectionManager {
 
   setMemoryCallback(
     callback: (
-      messages: Array<{ role: string; content: string }>
+      messages: Array<{ role: string; content: string }>,
+      conversationId: string | null
     ) => Promise<void>
   ): void {
     this.memoryCallback = callback;
