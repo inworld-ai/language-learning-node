@@ -694,7 +694,8 @@ export class ConnectionManager {
 
     // Capture state now - don't rely on reading mutable fields after async work
     const snapshotConversationId = this.processingConversationId;
-    const snapshotLanguageCode = this.processingLanguageCode || this.languageCode;
+    const snapshotLanguageCode =
+      this.processingLanguageCode || this.languageCode;
 
     const recentMessages = connection.state.messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
@@ -740,7 +741,8 @@ export class ConnectionManager {
 
     // Capture state now - don't rely on reading mutable fields after async work
     const snapshotConversationId = this.processingConversationId;
-    const snapshotLanguageCode = this.processingLanguageCode || this.languageCode;
+    const snapshotLanguageCode =
+      this.processingLanguageCode || this.languageCode;
 
     const recentMessages = messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
