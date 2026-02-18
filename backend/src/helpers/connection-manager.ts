@@ -986,10 +986,10 @@ export class ConnectionManager {
     conversationId: string,
     languageCode: string,
     messages: Array<{ role: string; content: string; timestamp?: string }>
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.isSwitchingConversation) {
       this.logger.warn('conversation_switch_already_in_progress');
-      return;
+      return false;
     }
 
     this.isSwitchingConversation = true;
@@ -1033,6 +1033,7 @@ export class ConnectionManager {
         { conversationId, languageCode, messageCount: messages.length },
         'conversation_switched'
       );
+      return true;
     } finally {
       this.isSwitchingConversation = false;
     }

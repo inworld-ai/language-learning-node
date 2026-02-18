@@ -92,11 +92,16 @@ export class FlashcardProcessor {
     messages: ConversationMessage[],
     userContext?: UserContextInterface
   ): Promise<Flashcard> {
+    // Snapshot language at call time - setLanguage() may be called mid-flight
+    // during a conversation switch, so we can't read from this.languageCode after awaits
+    const snapshotLanguageCode = this.languageCode;
+    const snapshotLanguageConfig = this.languageConfig;
+
     try {
       const input = {
         studentName: 'Student',
-        teacherName: this.languageConfig.teacherPersona.name,
-        target_language: this.languageConfig.name,
+        teacherName: snapshotLanguageConfig.teacherPersona.name,
+        target_language: snapshotLanguageConfig.name,
         messages: messages,
         flashcards: this.existingFlashcards,
       };
@@ -118,8 +123,8 @@ export class FlashcardProcessor {
       }
       const flashcard = finalData as unknown as Flashcard;
 
-      // Add language code to the flashcard
-      flashcard.languageCode = this.languageCode;
+      // Use snapshotted language, not current (which may have changed)
+      flashcard.languageCode = snapshotLanguageCode;
 
       // Check if this is a duplicate
       const isDuplicate = this.existingFlashcards.some(
@@ -129,8 +134,6 @@ export class FlashcardProcessor {
       );
 
       if (isDuplicate) {
-        // Try to generate a different one by adding a random seed to the prompt
-        // For simplicity, we'll just return an empty flashcard if duplicate
         return {
           id: v4(),
           targetWord: '',
@@ -138,7 +141,7 @@ export class FlashcardProcessor {
           example: '',
           mnemonic: '',
           timestamp: new Date().toISOString(),
-          languageCode: this.languageCode,
+          languageCode: snapshotLanguageCode,
         } as Flashcard & { error?: string };
       }
 
@@ -152,7 +155,7 @@ export class FlashcardProcessor {
         example: '',
         mnemonic: '',
         timestamp: new Date().toISOString(),
-        languageCode: this.languageCode,
+        languageCode: snapshotLanguageCode,
       } as Flashcard & { error?: string };
     }
   }

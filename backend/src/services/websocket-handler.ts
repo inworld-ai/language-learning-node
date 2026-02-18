@@ -416,11 +416,22 @@ async function handleConversationSwitch(
   try {
     // Switch conversation (waits for pending operations FIRST)
     // This ensures any flashcard/feedback generation in progress uses the OLD language
-    await connectionManager.switchConversation(
+    // Returns false if another switch is already in progress
+    const switched = await connectionManager.switchConversation(
       conversationId,
       languageCode,
       messages
     );
+
+    if (!switched) {
+      // Another switch is in progress - don't update processors or send ready signal
+      // The in-progress switch will complete and send its own conversation_ready
+      logger.warn(
+        { connectionId, conversationId, languageCode },
+        'conversation_switch_rejected_already_switching'
+      );
+      return;
+    }
 
     // Update processors with new language AFTER pending operations complete
     // This ensures flashcard generation for the old conversation uses the old language
