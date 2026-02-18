@@ -56,16 +56,30 @@ export class FlashcardProcessor {
   async generateFlashcards(
     messages: ConversationMessage[],
     count: number = 1,
-    userContext?: UserContextInterface
+    userContext?: UserContextInterface,
+    languageCodeOverride?: string
   ): Promise<Flashcard[]> {
     const executor = getFlashcardGraph();
+
+    // Use override language if provided (snapshotted from processing start time),
+    // otherwise fall back to processor's current language
+    const effectiveLanguageCode = languageCodeOverride || this.languageCode;
+    const effectiveLanguageConfig = languageCodeOverride
+      ? getLanguageConfig(languageCodeOverride)
+      : this.languageConfig;
 
     // Generate flashcards in parallel
     const promises: Promise<Flashcard>[] = [];
 
     for (let i = 0; i < count; i++) {
       promises.push(
-        this.generateSingleFlashcard(executor, messages, userContext)
+        this.generateSingleFlashcard(
+          executor,
+          messages,
+          userContext,
+          effectiveLanguageCode,
+          effectiveLanguageConfig
+        )
       );
     }
 
@@ -90,18 +104,20 @@ export class FlashcardProcessor {
   private async generateSingleFlashcard(
     executor: Graph,
     messages: ConversationMessage[],
-    userContext?: UserContextInterface
+    userContext?: UserContextInterface,
+    languageCode?: string,
+    languageConfig?: LanguageConfig
   ): Promise<Flashcard> {
-    // Snapshot language at call time - setLanguage() may be called mid-flight
-    // during a conversation switch, so we can't read from this.languageCode after awaits
-    const snapshotLanguageCode = this.languageCode;
-    const snapshotLanguageConfig = this.languageConfig;
+    // Use explicitly passed language (snapshotted at trigger time) to avoid
+    // reading from mutable this.languageCode which may change during async work
+    const effectiveLanguageCode = languageCode || this.languageCode;
+    const effectiveLanguageConfig = languageConfig || this.languageConfig;
 
     try {
       const input = {
         studentName: 'Student',
-        teacherName: snapshotLanguageConfig.teacherPersona.name,
-        target_language: snapshotLanguageConfig.name,
+        teacherName: effectiveLanguageConfig.teacherPersona.name,
+        target_language: effectiveLanguageConfig.name,
         messages: messages,
         flashcards: this.existingFlashcards,
       };
@@ -123,8 +139,7 @@ export class FlashcardProcessor {
       }
       const flashcard = finalData as unknown as Flashcard;
 
-      // Use snapshotted language, not current (which may have changed)
-      flashcard.languageCode = snapshotLanguageCode;
+      flashcard.languageCode = effectiveLanguageCode;
 
       // Check if this is a duplicate
       const isDuplicate = this.existingFlashcards.some(
@@ -141,7 +156,7 @@ export class FlashcardProcessor {
           example: '',
           mnemonic: '',
           timestamp: new Date().toISOString(),
-          languageCode: snapshotLanguageCode,
+          languageCode: effectiveLanguageCode,
         } as Flashcard & { error?: string };
       }
 
@@ -155,7 +170,7 @@ export class FlashcardProcessor {
         example: '',
         mnemonic: '',
         timestamp: new Date().toISOString(),
-        languageCode: snapshotLanguageCode,
+        languageCode: effectiveLanguageCode,
       } as Flashcard & { error?: string };
     }
   }

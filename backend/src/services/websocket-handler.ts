@@ -75,9 +75,9 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     });
 
     // Set up flashcard generation callback
-    // conversationId is captured at trigger time, not read from mutable state
+    // conversationId + languageCode are captured at trigger time, not read from mutable state
     connectionManager.setFlashcardCallback(
-      async (messages, conversationId) => {
+      async (messages, conversationId, languageCode) => {
         if (isShuttingDown()) {
           logger.debug(
             { connectionId },
@@ -101,7 +101,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           const flashcards = await flashcardProcessor.generateFlashcards(
             messages,
             1,
-            userContext
+            userContext,
+            languageCode
           );
           if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
             ws.send(
@@ -126,7 +127,7 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     // Set up feedback generation callback
     // conversationId is captured at trigger time, not read from mutable state
     connectionManager.setFeedbackCallback(
-      async (messages, currentTranscript, conversationId) => {
+      async (messages, currentTranscript, conversationId, languageCode) => {
         if (isShuttingDown()) {
           logger.debug(
             { connectionId },
@@ -150,7 +151,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           const feedback = await feedbackProcessor.generateFeedback(
             messages,
             currentTranscript,
-            userContext
+            userContext,
+            languageCode
           );
 
           if (feedback && ws.readyState === WebSocket.OPEN) {

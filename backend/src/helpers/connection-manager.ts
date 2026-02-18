@@ -48,20 +48,22 @@ export class ConnectionManager {
   private readonly RESTART_COOLDOWN_MS = 5000; // Prevent rapid restart loops
   private readonly RESTART_RESET_THRESHOLD_MS = 30000; // Reset attempts after stable operation
 
-  // Callback for flashcard processing (conversationId captured at trigger time)
+  // Callback for flashcard processing (conversationId + languageCode captured at trigger time)
   private flashcardCallback:
     | ((
         messages: Array<{ role: string; content: string }>,
-        conversationId: string | null
+        conversationId: string | null,
+        languageCode: string
       ) => Promise<void>)
     | null = null;
 
-  // Callback for feedback generation (conversationId captured at trigger time)
+  // Callback for feedback generation (conversationId + languageCode captured at trigger time)
   private feedbackCallback:
     | ((
         messages: Array<{ role: string; content: string }>,
         currentTranscript: string,
-        conversationId: string | null
+        conversationId: string | null,
+        languageCode: string
       ) => Promise<void>)
     | null = null;
 
@@ -80,8 +82,10 @@ export class ConnectionManager {
   private isProcessingResponse: boolean = false;
   private currentTranscript: string = '';
 
-  // Snapshot of conversationId when processing started, used to detect stale triggers
+  // Snapshots captured when processing started, used to detect stale triggers
+  // and to ensure flashcard/feedback generation uses the correct language
   private processingConversationId: string | null = null;
+  private processingLanguageCode: string | null = null;
 
   constructor(
     sessionId: string,
@@ -651,6 +655,7 @@ export class ConnectionManager {
     this.isProcessingResponse = true;
     this.currentTranscript = transcript;
     this.processingConversationId = this.conversationId;
+    this.processingLanguageCode = this.languageCode;
   }
 
   /**
@@ -687,8 +692,9 @@ export class ConnectionManager {
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
-    // Capture conversationId now - don't rely on reading it later after async work
+    // Capture state now - don't rely on reading mutable fields after async work
     const snapshotConversationId = this.processingConversationId;
+    const snapshotLanguageCode = this.processingLanguageCode || this.languageCode;
 
     const recentMessages = connection.state.messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
@@ -700,7 +706,8 @@ export class ConnectionManager {
     // Track pending flashcard generation
     this.pendingFlashcardGeneration = this.flashcardCallback(
       recentMessages,
-      snapshotConversationId
+      snapshotConversationId,
+      snapshotLanguageCode
     )
       .catch((error) => {
         this.logger.error({ err: error }, 'flashcard_generation_trigger_error');
@@ -731,8 +738,9 @@ export class ConnectionManager {
 
     if (!lastUserMessage) return;
 
-    // Capture conversationId now - don't rely on reading it later after async work
+    // Capture state now - don't rely on reading mutable fields after async work
     const snapshotConversationId = this.processingConversationId;
+    const snapshotLanguageCode = this.processingLanguageCode || this.languageCode;
 
     const recentMessages = messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
@@ -745,7 +753,8 @@ export class ConnectionManager {
     this.pendingFeedbackGeneration = this.feedbackCallback(
       recentMessages,
       lastUserMessage.content,
-      snapshotConversationId
+      snapshotConversationId,
+      snapshotLanguageCode
     )
       .catch((error) => {
         this.logger.error({ err: error }, 'feedback_generation_trigger_error');
@@ -799,7 +808,8 @@ export class ConnectionManager {
   setFlashcardCallback(
     callback: (
       messages: Array<{ role: string; content: string }>,
-      conversationId: string | null
+      conversationId: string | null,
+      languageCode: string
     ) => Promise<void>
   ): void {
     this.flashcardCallback = callback;
@@ -809,7 +819,8 @@ export class ConnectionManager {
     callback: (
       messages: Array<{ role: string; content: string }>,
       currentTranscript: string,
-      conversationId: string | null
+      conversationId: string | null,
+      languageCode: string
     ) => Promise<void>
   ): void {
     this.feedbackCallback = callback;
