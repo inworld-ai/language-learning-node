@@ -1081,6 +1081,7 @@ export function AppProvider({ children }: AppProviderProps) {
           role: m.role === 'user' ? 'learner' : 'teacher',
           content: m.content,
           timestamp: m.timestamp,
+          feedback: m.feedback,
         })) as ChatMessage[];
         dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
 
@@ -1390,6 +1391,7 @@ export function AppProvider({ children }: AppProviderProps) {
             role: m.role === 'user' ? 'learner' : 'teacher',
             content: m.content,
             timestamp: m.timestamp,
+            feedback: m.feedback,
           })) as ChatMessage[];
           dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
 

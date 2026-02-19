@@ -14,6 +14,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer } from 'http';
@@ -57,11 +58,11 @@ app.get('/health', (_req, res) => {
     .json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Serve frontend static files in production
-if (process.env.NODE_ENV === 'production') {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+// Serve frontend static files when the build exists
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 
+if (fs.existsSync(path.join(frontendDistPath, 'index.html'))) {
   // Serve static assets
   app.use(express.static(frontendDistPath));
 
@@ -73,6 +74,31 @@ if (process.env.NODE_ENV === 'production') {
 
 // WebSocket handlers
 setupWebSocketHandlers(wss);
+
+// Server-side heartbeat: ping all clients every 30s, terminate unresponsive ones
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    const ext = ws as typeof ws & { isAlive?: boolean };
+    if (ext.isAlive === false) {
+      logger.warn('terminating_unresponsive_ws_client');
+      return ws.terminate();
+    }
+    ext.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on('connection', (ws) => {
+  const ext = ws as typeof ws & { isAlive?: boolean };
+  ext.isAlive = true;
+  ws.on('pong', () => {
+    ext.isAlive = true;
+  });
+});
+
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
 
 // Server startup
 async function startServer(): Promise<void> {

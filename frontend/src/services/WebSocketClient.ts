@@ -106,10 +106,8 @@ export class WebSocketClient {
           this.reconnectAttempts = 0;
           this.emit('connection', 'connected');
 
-          // Start ping/pong for iOS
-          if (this.isIOS) {
-            this.startPingPong();
-          }
+          // Start ping/pong to keep connection alive
+          this.startPingPong();
 
           resolve();
         };
@@ -143,10 +141,9 @@ export class WebSocketClient {
 
           this.stopPingPong();
 
-          // Only attempt reconnect if not intentionally disconnected
+          // Attempt reconnect on any unexpected close (skip only intentional disconnects)
           if (
             !this.isIntentionalDisconnect &&
-            !event.wasClean &&
             this.reconnectAttempts < this.maxReconnectAttempts
           ) {
             this.scheduleReconnect();

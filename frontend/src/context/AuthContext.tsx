@@ -88,18 +88,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  const friendlyAuthError = (err: unknown): string => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('network')) {
+      return 'Unable to connect to the authentication server. Check your network connection or verify Supabase is configured correctly.';
+    }
+    return msg;
+  };
+
   const signUp = async (
     email: string,
     password: string
   ): Promise<{ error: string | null }> => {
     if (!supabase) return { error: 'Supabase not configured' };
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    return { error: error?.message ?? null };
+      return { error: error?.message ?? null };
+    } catch (err) {
+      return { error: friendlyAuthError(err) };
+    }
   };
 
   const signIn = async (
@@ -108,12 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<{ error: string | null }> => {
     if (!supabase) return { error: 'Supabase not configured' };
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    return { error: error?.message ?? null };
+      return { error: error?.message ?? null };
+    } catch (err) {
+      return { error: friendlyAuthError(err) };
+    }
   };
 
   const signOut = async () => {
