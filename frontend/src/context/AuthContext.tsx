@@ -90,7 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const friendlyAuthError = (err: unknown): string => {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('network')) {
+    if (
+      msg === 'Failed to fetch' ||
+      msg.includes('NetworkError') ||
+      msg.includes('network')
+    ) {
       return 'Unable to connect to the authentication server. Check your network connection or verify Supabase is configured correctly.';
     }
     return msg;
