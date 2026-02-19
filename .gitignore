@@ -143,3 +143,13 @@ backend/audio/
 .DS_Store
 CLAUDE.md
 templates/
+.claude
+
+# Gas Town / local state
+.beads/
+.runtime/
+state.json
+
+# Deployment files
+deploy/
+.gcloudignore
