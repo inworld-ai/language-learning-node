@@ -31,9 +31,11 @@ cd language-learning-node
 npm install
 ```
 
+This installs dependencies for the root, backend, and frontend automatically.
+
 ### Step 3: Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `backend/.env` file:
 
 ```bash
 INWORLD_API_KEY=your_inworld_base64_key
@@ -53,7 +55,9 @@ ASSEMBLY_AI_API_KEY=your_assemblyai_key
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+This starts both the backend (port 3000) and frontend dev server (port 5173) concurrently.
+
+Open [http://localhost:5173](http://localhost:5173)
 
 **For production**:
 
@@ -61,6 +65,8 @@ Open [http://localhost:3000](http://localhost:3000)
 npm run build
 npm start
 ```
+
+Open [http://localhost:3000](http://localhost:3000)
 
 ### Step 5 (Optional): Set Up Supabase for Auth & Memory
 
@@ -80,11 +86,11 @@ This creates all tables, indexes, RLS policies, and the `match_memories` functio
 
 Find your project ref in the Supabase dashboard URL: `supabase.com/dashboard/project/YOUR_PROJECT_REF`
 
-**c) Add Supabase variables to `.env` (root):**
+**c) Add Supabase variables to `backend/.env`:**
 
 ```bash
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_SECRET_KEY=your_secret_key
 ```
 
 **d) Create `frontend/.env.local`:**
@@ -101,30 +107,34 @@ Find these in: Supabase Dashboard > Settings > API
 ```
 language-learning-node/
 ├── backend/
-│   ├── __tests__/            # Backend unit tests
-│   ├── config/               # Language & server configuration
-│   ├── graphs/               # Inworld Runtime conversation graphs
-│   │   ├── configs/          # Graph JSON configurations
-│   │   └── nodes/            # Custom graph nodes (STT, TTS, etc.)
-│   ├── helpers/              # Audio utils, connection management, etc.
-│   ├── prompts/              # Nunjucks prompt templates
-│   ├── services/             # Server components
-│   ├── utils/                # Logger
-│   └── server.ts             # Express + WebSocket server entry point
+│   ├── src/
+│   │   ├── __tests__/        # Backend unit tests
+│   │   ├── config/           # Language, LLM & server configuration
+│   │   ├── graphs/           # Inworld Runtime conversation graphs
+│   │   │   ├── configs/      # Graph JSON configurations
+│   │   │   └── nodes/        # Custom graph nodes
+│   │   ├── helpers/          # Audio utils, connection management
+│   │   ├── prompts/          # Nunjucks prompt templates
+│   │   ├── services/         # Server components (WS handler, API routes)
+│   │   ├── types/            # TypeScript types
+│   │   ├── utils/            # Logger
+│   │   └── server.ts         # Entry point
+│   └── vitest.config.ts      # Backend test config
 ├── frontend/
 │   ├── src/
 │   │   ├── __tests__/        # Frontend unit tests
 │   │   ├── components/       # React components
-│   │   ├── context/          # App state & auth (React Context)
+│   │   ├── config/           # Language configuration
+│   │   ├── context/          # App state & auth
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── services/         # WebSocket client, audio, storage
 │   │   ├── styles/           # CSS
 │   │   └── types/            # TypeScript types
 │   └── vitest.config.ts      # Frontend test config
-├── supabase/                 # Database migrations (optional)
-├── deploy/                   # Deployment configurations
-├── package.json
-└── .env                      # Environment variables
+├── supabase/
+│   └── migrations/           # Database schema
+├── render.yaml               # Render deployment config
+└── package.json              # Monorepo scripts
 ```
 
 ## Architecture
@@ -162,20 +172,25 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 | `ASSEMBLY_AI_API_KEY`       | Yes      | AssemblyAI API key                                                 |
 | `PORT`                      | No       | Server port (default: 3000)                                        |
 | `LOG_LEVEL`                 | No       | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default: info) |
-| `NODE_ENV`                  | No       | `development` or `production`                                      |
+| `NODE_ENV`                  | No       | Set to `production` for production log format                      |
 | `ASSEMBLY_AI_EAGERNESS`     | No       | Turn detection: `low`, `medium`, `high` (default: high)            |
 | `SUPABASE_URL`              | No       | Supabase project URL (enables memory feature)                      |
-| `SUPABASE_SERVICE_ROLE_KEY` | No       | Supabase service role key (for backend memory storage)             |
+| `SUPABASE_SECRET_KEY`       | No       | Supabase secret key (for backend memory storage)                   |
 
 ## Testing
 
-Run the test suite to verify core functionality:
-
 ```bash
-npm test              # Run all tests
-npm run test:backend  # Backend tests only
-npm run test:frontend # Frontend tests only
-npm run test:watch    # Watch mode for backend
+# Run all tests (backend + frontend)
+npm test --prefix backend
+
+# Backend tests only
+npm run test:backend --prefix backend
+
+# Frontend tests only
+npm test --prefix frontend
+
+# Watch mode (backend)
+npm run test:watch --prefix backend
 ```
 
 Tests cover critical paths: audio conversion, language configuration, storage persistence, and flashcard deduplication.

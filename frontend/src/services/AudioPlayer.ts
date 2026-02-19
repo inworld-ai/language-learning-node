@@ -12,6 +12,11 @@ export class AudioPlayer {
   private streamTimeout: ReturnType<typeof setTimeout> | null = null;
   private isIOS: boolean;
   private iosHandler: IOSAudioHandler | null;
+  private nextStartTime: number = 0;
+  private scheduledSources: AudioBufferSourceNode[] = [];
+  private scheduleInterval: ReturnType<typeof setInterval> | null = null;
+  private readonly SCHEDULE_AHEAD_TIME = 0.1; // Look 100ms ahead
+  private readonly FADE_SAMPLES = 128; // ~2.7ms at 48kHz, ~8ms at 16kHz
 
   constructor() {
     this.isIOS =
@@ -116,15 +121,17 @@ export class AudioPlayer {
         sampleRate,
         audioFormat
       );
+      this.applyFadeEnvelope(audioBuffer);
 
       this.audioQueue.push(audioBuffer);
 
       // Start playback immediately if not already playing
       if (!this.isPlaying && !this.isStartingPlayback) {
         this.isStartingPlayback = true;
+        this.startScheduleInterval();
         requestAnimationFrame(() => {
           this.isStartingPlayback = false;
-          this.playNextBuffer();
+          this.scheduleBuffers();
         });
       }
     } catch (error) {
@@ -191,41 +198,106 @@ export class AudioPlayer {
     }
   }
 
-  private playNextBuffer(): void {
-    if (this.isPlaying && this.currentSource) {
+  private applyFadeEnvelope(audioBuffer: AudioBuffer): void {
+    const channelData = audioBuffer.getChannelData(0);
+    const length = channelData.length;
+    const fadeLength = Math.min(this.FADE_SAMPLES, Math.floor(length / 4));
+
+    // Fade-in at start
+    for (let i = 0; i < fadeLength; i++) {
+      const gain = i / fadeLength;
+      channelData[i] *= gain;
+    }
+
+    // Fade-out at end
+    for (let i = 0; i < fadeLength; i++) {
+      const gain = i / fadeLength;
+      channelData[length - 1 - i] *= gain;
+    }
+  }
+
+  private scheduleBuffers(): void {
+    if (!this.audioContext || this.audioQueue.length === 0) {
       return;
     }
 
-    if (this.audioQueue.length === 0) {
-      this.isPlaying = false;
-      this.emit('playback_finished');
-      return;
+    const currentTime = this.audioContext.currentTime;
+
+    // Handle queue underrun with safety margin
+    if (this.nextStartTime < currentTime) {
+      const underrunAmount = currentTime - this.nextStartTime;
+      if (underrunAmount > 0.05) {
+        console.warn(
+          `[AudioPlayer] Queue underrun: ${(underrunAmount * 1000).toFixed(1)}ms behind`
+        );
+      }
+      // Add small margin to ensure we're not scheduling in the past
+      this.nextStartTime = currentTime + 0.005;
     }
 
+    // Schedule buffers that should start within SCHEDULE_AHEAD_TIME
+    while (
+      this.audioQueue.length > 0 &&
+      this.nextStartTime < currentTime + this.SCHEDULE_AHEAD_TIME
+    ) {
+      const audioBuffer = this.audioQueue.shift()!;
+      this.scheduleBuffer(audioBuffer, this.nextStartTime);
+      this.nextStartTime += audioBuffer.duration;
+    }
+  }
+
+  private scheduleBuffer(audioBuffer: AudioBuffer, startTime: number): void {
     if (!this.audioContext) return;
 
-    const audioBuffer = this.audioQueue.shift()!;
-    this.isPlaying = true;
+    const source = this.audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(this.audioContext.destination);
 
-    this.currentSource = this.audioContext.createBufferSource();
-    this.currentSource.buffer = audioBuffer;
+    this.scheduledSources.push(source);
 
-    this.currentSource.connect(this.audioContext.destination);
+    source.onended = () => {
+      const index = this.scheduledSources.indexOf(source);
+      if (index > -1) {
+        this.scheduledSources.splice(index, 1);
+      }
 
-    this.currentSource.onended = () => {
-      this.currentSource = null;
-      this.playNextBuffer();
+      if (this.scheduledSources.length === 0 && this.audioQueue.length === 0) {
+        this.isPlaying = false;
+        this.stopScheduleInterval();
+        this.emit('playback_finished');
+      }
     };
 
     try {
-      this.currentSource.start(0);
-      this.emit('playback_started');
-      console.log(`Playing audio buffer: ${audioBuffer.duration.toFixed(2)}s`);
+      source.start(startTime);
+      console.log(
+        `Scheduled buffer: ${audioBuffer.duration.toFixed(3)}s at ${startTime.toFixed(3)}`
+      );
+
+      if (!this.isPlaying) {
+        this.isPlaying = true;
+        this.emit('playback_started');
+      }
     } catch (error) {
-      console.error('Error starting audio playback:', error);
-      this.currentSource = null;
-      this.isPlaying = false;
-      this.playNextBuffer();
+      console.error('Error scheduling audio buffer:', error);
+      const index = this.scheduledSources.indexOf(source);
+      if (index > -1) {
+        this.scheduledSources.splice(index, 1);
+      }
+    }
+  }
+
+  private startScheduleInterval(): void {
+    if (this.scheduleInterval) return;
+    this.scheduleInterval = setInterval(() => {
+      this.scheduleBuffers();
+    }, 50);
+  }
+
+  private stopScheduleInterval(): void {
+    if (this.scheduleInterval) {
+      clearInterval(this.scheduleInterval);
+      this.scheduleInterval = null;
     }
   }
 
@@ -246,6 +318,20 @@ export class AudioPlayer {
     }
 
     // Standard implementation
+    this.stopScheduleInterval();
+
+    // Stop all scheduled sources
+    for (const source of this.scheduledSources) {
+      try {
+        source.stop();
+        source.disconnect();
+      } catch {
+        // Source may have already ended
+      }
+    }
+    this.scheduledSources = [];
+    this.nextStartTime = 0;
+
     if (this.currentSource) {
       try {
         this.currentSource.stop();
@@ -265,6 +351,7 @@ export class AudioPlayer {
 
   destroy(): void {
     this.stop();
+    this.stopScheduleInterval();
 
     if (this.audioContext) {
       this.audioContext.close();

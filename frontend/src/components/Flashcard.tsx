@@ -51,9 +51,7 @@ export function Flashcard({
     >
       <div className="flashcard-inner">
         <div className="flashcard-front">
-          <div className="flashcard-target-word">
-            {displayTargetWord}
-          </div>
+          <div className="flashcard-target-word">{displayTargetWord}</div>
           <button
             className={`pronounce-button ${isPronouncing ? 'loading' : ''}`}
             onClick={handlePronounce}
@@ -79,12 +77,8 @@ export function Flashcard({
           </button>
         </div>
         <div className="flashcard-back">
-          <div className="flashcard-english">
-            {english}
-          </div>
-          <div className="flashcard-example">
-            {example}
-          </div>
+          <div className="flashcard-english">{english}</div>
+          <div className="flashcard-example">{example}</div>
           {mnemonic && (
             <div className="flashcard-mnemonic">
               <span className="mnemonic-label">Remember:</span>{' '}

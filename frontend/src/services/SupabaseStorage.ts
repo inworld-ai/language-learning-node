@@ -79,7 +79,7 @@ export class SupabaseStorage {
   ): Promise<ConversationData | null> {
     const { data: messages } = await this.supabase
       .from('conversation_messages')
-      .select('role, content, created_at')
+      .select('role, content, created_at, feedback')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
@@ -91,6 +91,7 @@ export class SupabaseStorage {
         role: m.role as 'user' | 'assistant',
         content: m.content,
         timestamp: m.created_at,
+        feedback: m.feedback || undefined,
       })),
     };
   }
@@ -114,6 +115,7 @@ export class SupabaseStorage {
           role: m.role,
           content: m.content,
           created_at: m.timestamp || new Date().toISOString(),
+          feedback: m.feedback || null,
         }))
       );
     }
@@ -220,6 +222,7 @@ export class SupabaseStorage {
     flashcards: Flashcard[],
     languageCode: string
   ): Promise<void> {
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const toInsert = flashcards.map((f) => ({
       user_id: this.userId,
       language_code: languageCode,
@@ -271,6 +274,7 @@ export class SupabaseStorage {
     flashcards: Flashcard[],
     languageCode: string
   ): Promise<void> {
+    // @deprecated Legacy 'spanish' field fallback - remove when all data migrated
     const toInsert = flashcards.map((f) => ({
       user_id: this.userId,
       conversation_id: conversationId,
@@ -293,5 +297,20 @@ export class SupabaseStorage {
       .delete()
       .eq('user_id', this.userId)
       .eq('conversation_id', conversationId);
+  }
+
+  // Feedback persistence
+  async updateMessageFeedback(
+    conversationId: string,
+    messageContent: string,
+    feedback: string
+  ): Promise<void> {
+    // Update feedback for the message with matching content in this conversation
+    await this.supabase
+      .from('conversation_messages')
+      .update({ feedback })
+      .eq('conversation_id', conversationId)
+      .eq('content', messageContent)
+      .eq('role', 'user');
   }
 }

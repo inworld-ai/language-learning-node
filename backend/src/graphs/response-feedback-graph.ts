@@ -17,6 +17,7 @@ export interface ResponseFeedbackInput {
   messages: Array<{ role: string; content: string }>;
   currentTranscript: string;
   targetLanguage: string;
+  previousFeedback: string[];
 }
 
 class FeedbackPromptBuilderNode extends CustomNode {

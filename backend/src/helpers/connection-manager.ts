@@ -13,7 +13,7 @@ import { GraphTypes } from '@inworld/runtime/graph';
 
 import { ConversationGraphWrapper } from '../graphs/conversation-graph.js';
 import { MultimodalStreamManager } from './multimodal-stream-manager.js';
-import { decodeBase64ToFloat32 } from './audio-utils.js';
+import { decodeBase64ToFloat32, convertAudioToBase64 } from './audio-utils.js';
 import { ConnectionsMap } from '../types/index.js';
 import {
   getLanguageConfig,
@@ -22,6 +22,9 @@ import {
 } from '../config/languages.js';
 import { serverConfig } from '../config/server.js';
 import { createSessionLogger } from '../utils/logger.js';
+
+const RECENT_MESSAGES_FOR_FLASHCARDS = 6;
+const RECENT_MESSAGES_FOR_MEMORY = 10;
 
 export class ConnectionManager {
   private sessionId: string;
@@ -45,23 +48,30 @@ export class ConnectionManager {
   private readonly RESTART_COOLDOWN_MS = 5000; // Prevent rapid restart loops
   private readonly RESTART_RESET_THRESHOLD_MS = 30000; // Reset attempts after stable operation
 
-  // Callback for flashcard processing
+  // Callback for flashcard processing (conversationId + languageCode captured at trigger time)
   private flashcardCallback:
-    | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
-    | null = null;
-
-  // Callback for feedback generation
-  private feedbackCallback:
     | ((
         messages: Array<{ role: string; content: string }>,
-        currentTranscript: string
+        conversationId: string | null,
+        languageCode: string
       ) => Promise<void>)
     | null = null;
 
-  // Callback for memory creation
+  // Callback for feedback generation (conversationId + languageCode captured at trigger time)
+  private feedbackCallback:
+    | ((
+        messages: Array<{ role: string; content: string }>,
+        currentTranscript: string,
+        conversationId: string | null,
+        languageCode: string
+      ) => Promise<void>)
+    | null = null;
+
+  // Callback for memory creation (conversationId captured at trigger time)
   private memoryCallback:
     | ((
-        messages: Array<{ role: string; content: string }>
+        messages: Array<{ role: string; content: string }>,
+        conversationId: string | null
       ) => Promise<void>)
     | null = null;
 
@@ -71,6 +81,11 @@ export class ConnectionManager {
   // Processing state tracking for utterance stitching
   private isProcessingResponse: boolean = false;
   private currentTranscript: string = '';
+
+  // Snapshots captured when processing started, used to detect stale triggers
+  // and to ensure flashcard/feedback generation uses the correct language
+  private processingConversationId: string | null = null;
+  private processingLanguageCode: string | null = null;
 
   constructor(
     sessionId: string,
@@ -432,7 +447,7 @@ export class ConnectionManager {
 
               // Convert audio to base64 for WebSocket transmission
               // Use ttsSampleRate as fallback (not inputSampleRate which is for microphone input)
-              const audioResult = this.convertAudioToBase64(chunk.audio);
+              const audioResult = convertAudioToBase64(chunk.audio);
               if (audioResult) {
                 this.sendToClient({
                   type: 'audio_stream',
@@ -639,6 +654,8 @@ export class ConnectionManager {
   private markProcessingStart(transcript: string): void {
     this.isProcessingResponse = true;
     this.currentTranscript = transcript;
+    this.processingConversationId = this.conversationId;
+    this.processingLanguageCode = this.languageCode;
   }
 
   /**
@@ -647,38 +664,6 @@ export class ConnectionManager {
   private markProcessingComplete(): void {
     this.isProcessingResponse = false;
     this.currentTranscript = '';
-  }
-
-  /**
-   * Convert audio data to base64 string for WebSocket transmission
-   * Inworld TTS returns Float32 PCM in [-1.0, 1.0] range - send directly to preserve quality
-   */
-  private convertAudioToBase64(audio: {
-    data?: string | number[] | Float32Array;
-    sampleRate?: number;
-  }): { base64: string; format: 'float32' | 'int16' } | null {
-    if (!audio.data) return null;
-
-    if (typeof audio.data === 'string') {
-      // Already base64 - assume Int16 format for backwards compatibility
-      return { base64: audio.data, format: 'int16' };
-    }
-
-    // Inworld SDK returns audio.data as an array of raw bytes (0-255)
-    // These bytes ARE the Float32 PCM data in IEEE 754 format (4 bytes per sample)
-    // Simply pass them through as-is, and frontend interprets as Float32Array
-    const audioBuffer = Array.isArray(audio.data)
-      ? Buffer.from(audio.data) // Treat each array element as a byte
-      : Buffer.from(
-          audio.data.buffer,
-          audio.data.byteOffset,
-          audio.data.byteLength
-        );
-
-    return {
-      base64: audioBuffer.toString('base64'),
-      format: 'float32', // Frontend will interpret bytes as Float32Array
-    };
   }
 
   /**
@@ -699,17 +684,32 @@ export class ConnectionManager {
    */
   private triggerFlashcardGeneration(): void {
     if (!this.flashcardCallback) return;
+    if (this.conversationId !== this.processingConversationId) {
+      this.logger.info('skipping_flashcard_generation_conversation_changed');
+      return;
+    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
-    const recentMessages = connection.state.messages.slice(-6).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Capture state now - don't rely on reading mutable fields after async work
+    const snapshotConversationId = this.processingConversationId;
+    const snapshotLanguageCode =
+      this.processingLanguageCode || this.languageCode;
+
+    const recentMessages = connection.state.messages
+      .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Track pending flashcard generation
-    this.pendingFlashcardGeneration = this.flashcardCallback(recentMessages)
+    this.pendingFlashcardGeneration = this.flashcardCallback(
+      recentMessages,
+      snapshotConversationId,
+      snapshotLanguageCode
+    )
       .catch((error) => {
         this.logger.error({ err: error }, 'flashcard_generation_trigger_error');
       })
@@ -723,6 +723,10 @@ export class ConnectionManager {
    */
   private triggerFeedbackGeneration(): void {
     if (!this.feedbackCallback) return;
+    if (this.conversationId !== this.processingConversationId) {
+      this.logger.info('skipping_feedback_generation_conversation_changed');
+      return;
+    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
@@ -735,15 +739,24 @@ export class ConnectionManager {
 
     if (!lastUserMessage) return;
 
-    const recentMessages = messages.slice(-6).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Capture state now - don't rely on reading mutable fields after async work
+    const snapshotConversationId = this.processingConversationId;
+    const snapshotLanguageCode =
+      this.processingLanguageCode || this.languageCode;
+
+    const recentMessages = messages
+      .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Track pending feedback generation
     this.pendingFeedbackGeneration = this.feedbackCallback(
       recentMessages,
-      lastUserMessage.content
+      lastUserMessage.content,
+      snapshotConversationId,
+      snapshotLanguageCode
     )
       .catch((error) => {
         this.logger.error({ err: error }, 'feedback_generation_trigger_error');
@@ -759,17 +772,29 @@ export class ConnectionManager {
    */
   private triggerMemoryGeneration(): void {
     if (!this.memoryCallback) return;
+    if (this.conversationId !== this.processingConversationId) {
+      this.logger.info('skipping_memory_generation_conversation_changed');
+      return;
+    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
 
-    const recentMessages = connection.state.messages.slice(-10).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Capture conversationId now - don't rely on reading it later after async work
+    const snapshotConversationId = this.processingConversationId;
+
+    const recentMessages = connection.state.messages
+      .slice(-RECENT_MESSAGES_FOR_MEMORY)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Track pending memory generation
-    this.pendingMemoryGeneration = this.memoryCallback(recentMessages)
+    this.pendingMemoryGeneration = this.memoryCallback(
+      recentMessages,
+      snapshotConversationId
+    )
       .catch((error) => {
         this.logger.error({ err: error }, 'memory_generation_trigger_error');
       })
@@ -784,7 +809,9 @@ export class ConnectionManager {
 
   setFlashcardCallback(
     callback: (
-      messages: Array<{ role: string; content: string }>
+      messages: Array<{ role: string; content: string }>,
+      conversationId: string | null,
+      languageCode: string
     ) => Promise<void>
   ): void {
     this.flashcardCallback = callback;
@@ -793,7 +820,9 @@ export class ConnectionManager {
   setFeedbackCallback(
     callback: (
       messages: Array<{ role: string; content: string }>,
-      currentTranscript: string
+      currentTranscript: string,
+      conversationId: string | null,
+      languageCode: string
     ) => Promise<void>
   ): void {
     this.feedbackCallback = callback;
@@ -801,7 +830,8 @@ export class ConnectionManager {
 
   setMemoryCallback(
     callback: (
-      messages: Array<{ role: string; content: string }>
+      messages: Array<{ role: string; content: string }>,
+      conversationId: string | null
     ) => Promise<void>
   ): void {
     this.memoryCallback = callback;
@@ -899,7 +929,7 @@ export class ConnectionManager {
     }));
 
     connection.state.messages = chatMessages;
-    
+
     this.logger.info(
       { messageCount: chatMessages.length },
       'conversation_history_loaded'
@@ -969,10 +999,10 @@ export class ConnectionManager {
     conversationId: string,
     languageCode: string,
     messages: Array<{ role: string; content: string; timestamp?: string }>
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.isSwitchingConversation) {
       this.logger.warn('conversation_switch_already_in_progress');
-      return;
+      return false;
     }
 
     this.isSwitchingConversation = true;
@@ -1016,6 +1046,7 @@ export class ConnectionManager {
         { conversationId, languageCode, messageCount: messages.length },
         'conversation_switched'
       );
+      return true;
     } finally {
       this.isSwitchingConversation = false;
     }

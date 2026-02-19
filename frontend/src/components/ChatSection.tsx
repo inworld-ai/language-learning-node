@@ -136,9 +136,22 @@ export function ChatSection() {
       <div className="chat-container">
         <div className="messages" id="messages" ref={messagesContainerRef}>
           {/* Loading overlay when not connected */}
-          {connectionStatus !== 'connected' && (
+          {connectionStatus === 'connecting' && (
             <div className="chat-loading">
               <div className="chat-loading-spinner" />
+            </div>
+          )}
+          {connectionStatus === 'disconnected' && (
+            <div className="chat-loading">
+              <div className="chat-disconnected">
+                <p>Connection lost.</p>
+                <button
+                  className="reload-button"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload page
+                </button>
+              </div>
             </div>
           )}
 

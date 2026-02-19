@@ -87,3 +87,35 @@ export function decodeBase64ToFloat32(base64Audio: string): Float32Array {
   // Interpret bytes directly as Float32 (4 bytes per sample)
   return new Float32Array(cleanArray.buffer);
 }
+
+/**
+ * Convert audio data to base64 string for WebSocket transmission
+ * Inworld TTS returns Float32 PCM in [-1.0, 1.0] range - send directly to preserve quality
+ */
+export function convertAudioToBase64(audio: {
+  data?: string | number[] | Float32Array;
+  sampleRate?: number;
+}): { base64: string; format: 'float32' | 'int16' } | null {
+  if (!audio.data) return null;
+
+  if (typeof audio.data === 'string') {
+    // Already base64 - assume Int16 format for backwards compatibility
+    return { base64: audio.data, format: 'int16' };
+  }
+
+  // Inworld SDK returns audio.data as an array of raw bytes (0-255)
+  // These bytes ARE the Float32 PCM data in IEEE 754 format (4 bytes per sample)
+  // Simply pass them through as-is, and frontend interprets as Float32Array
+  const audioBuffer = Array.isArray(audio.data)
+    ? Buffer.from(audio.data) // Treat each array element as a byte
+    : Buffer.from(
+        audio.data.buffer,
+        audio.data.byteOffset,
+        audio.data.byteLength
+      );
+
+  return {
+    base64: audioBuffer.toString('base64'),
+    format: 'float32', // Frontend will interpret bytes as Float32Array
+  };
+}

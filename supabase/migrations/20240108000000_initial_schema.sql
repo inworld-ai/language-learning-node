@@ -38,6 +38,7 @@ create table public.conversation_messages (
   conversation_id uuid references public.conversations(id) on delete cascade not null,
   role text check (role in ('user', 'assistant')) not null,
   content text not null,
+  feedback text,
   created_at timestamptz default now() not null
 );
 
@@ -80,6 +81,9 @@ create table public.user_memories (
 create index idx_conversations_user_lang on public.conversations(user_id, language_code, updated_at desc);
 create index idx_messages_conversation on public.conversation_messages(conversation_id, created_at);
 create index idx_flashcards_conversation on public.flashcards(user_id, conversation_id);
+create index idx_flashcards_conversation_id on public.flashcards(conversation_id);
+create index idx_messages_feedback on public.conversation_messages(conversation_id)
+where feedback is not null;
 
 -- Memory indexes
 create index idx_memories_embedding on public.user_memories
@@ -98,12 +102,12 @@ alter table public.user_memories enable row level security;
 
 -- RLS Policies (users can only access their own data)
 -- Note: Service role key bypasses RLS, which is what the backend uses
-create policy "Users manage own preferences" on public.user_preferences for all using (auth.uid() = user_id);
-create policy "Users manage own conversations" on public.conversations for all using (auth.uid() = user_id);
+create policy "Users manage own preferences" on public.user_preferences for all using ((select auth.uid()) = user_id);
+create policy "Users manage own conversations" on public.conversations for all using ((select auth.uid()) = user_id);
 create policy "Users manage own messages" on public.conversation_messages for all
-  using (conversation_id in (select id from public.conversations where user_id = auth.uid()));
-create policy "Users manage own flashcards" on public.flashcards for all using (auth.uid() = user_id);
-create policy "Users manage own memories" on public.user_memories for all using (auth.uid() = user_id);
+  using (conversation_id in (select id from public.conversations where user_id = (select auth.uid())));
+create policy "Users manage own flashcards" on public.flashcards for all using ((select auth.uid()) = user_id);
+create policy "Users manage own memories" on public.user_memories for all using ((select auth.uid()) = user_id);
 
 --------------------------------------------------------------------------------
 -- Functions

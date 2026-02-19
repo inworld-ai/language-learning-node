@@ -19,6 +19,7 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   timestamp?: string;
+  feedback?: string;
 }
 
 // Conversation message for backend
@@ -26,6 +27,7 @@ export interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  feedback?: string;
 }
 
 export interface ConversationHistory {
@@ -55,10 +57,13 @@ export interface Flashcard {
   timestamp?: string;
   languageCode?: string;
   conversationId?: string;
-  // Legacy fields for backward compatibility
+  /** @deprecated Use targetWord instead. Kept for backward compatibility with legacy data. */
   spanish?: string;
+  /** @deprecated Use targetWord instead. Kept for backward compatibility with legacy data. */
   word?: string;
+  /** @deprecated Use english instead. Kept for backward compatibility with legacy data. */
   translation?: string;
+  /** @deprecated Use example instead. Kept for backward compatibility with legacy data. */
   example_sentence?: string;
 }
 

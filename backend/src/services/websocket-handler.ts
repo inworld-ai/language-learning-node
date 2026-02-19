@@ -9,6 +9,7 @@ import { telemetry } from '@inworld/runtime';
 import { GraphTypes } from '@inworld/runtime/graph';
 
 import { ConnectionManager } from '../helpers/connection-manager.js';
+import { convertAudioToBase64 } from '../helpers/audio-utils.js';
 import { FlashcardProcessor } from '../helpers/flashcard-processor.js';
 import { FeedbackProcessor } from '../helpers/feedback-processor.js';
 import { MemoryProcessor } from '../helpers/memory-processor.js';
@@ -74,55 +75,59 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     });
 
     // Set up flashcard generation callback
-    connectionManager.setFlashcardCallback(async (messages) => {
-      if (isShuttingDown()) {
-        logger.debug(
-          { connectionId },
-          'skipping_flashcard_generation_shutting_down'
-        );
-        return;
-      }
-
-      try {
-        const attrs = connectionAttributes.get(connectionId) || {};
-        const userAttributes: Record<string, string> = {
-          timezone: attrs.timezone || '',
-        };
-
-        const targetingKey = attrs.userId || connectionId;
-        const userContext = {
-          attributes: userAttributes,
-          targetingKey,
-        };
-
-        const flashcards = await flashcardProcessor.generateFlashcards(
-          messages,
-          1,
-          userContext
-        );
-        if (flashcards.length > 0) {
-          const conversationId = connectionManager.getConversationId();
-          ws.send(
-            JSON.stringify({
-              type: 'flashcards_generated',
-              flashcards,
-              conversationId: conversationId || null,
-            })
+    // conversationId + languageCode are captured at trigger time, not read from mutable state
+    connectionManager.setFlashcardCallback(
+      async (messages, conversationId, languageCode) => {
+        if (isShuttingDown()) {
+          logger.debug(
+            { connectionId },
+            'skipping_flashcard_generation_shutting_down'
           );
+          return;
         }
-      } catch (error) {
-        if (!isShuttingDown()) {
-          logger.error(
-            { err: error, connectionId },
-            'flashcard_generation_error'
+
+        try {
+          const attrs = connectionAttributes.get(connectionId) || {};
+          const userAttributes: Record<string, string> = {
+            timezone: attrs.timezone || '',
+          };
+
+          const targetingKey = attrs.userId || connectionId;
+          const userContext = {
+            attributes: userAttributes,
+            targetingKey,
+          };
+
+          const flashcards = await flashcardProcessor.generateFlashcards(
+            messages,
+            1,
+            userContext,
+            languageCode
           );
+          if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: 'flashcards_generated',
+                flashcards,
+                conversationId: conversationId || null,
+              })
+            );
+          }
+        } catch (error) {
+          if (!isShuttingDown()) {
+            logger.error(
+              { err: error, connectionId },
+              'flashcard_generation_error'
+            );
+          }
         }
       }
-    });
+    );
 
     // Set up feedback generation callback
+    // conversationId is captured at trigger time, not read from mutable state
     connectionManager.setFeedbackCallback(
-      async (messages, currentTranscript) => {
+      async (messages, currentTranscript, conversationId, languageCode) => {
         if (isShuttingDown()) {
           logger.debug(
             { connectionId },
@@ -146,11 +151,11 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           const feedback = await feedbackProcessor.generateFeedback(
             messages,
             currentTranscript,
-            userContext
+            userContext,
+            languageCode
           );
 
-          if (feedback) {
-            const conversationId = connectionManager.getConversationId();
+          if (feedback && ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
                 type: 'feedback_generated',
@@ -172,7 +177,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     );
 
     // Set up memory generation callback
-    connectionManager.setMemoryCallback(async (messages) => {
+    // conversationId is captured at trigger time (unused here but kept for consistency)
+    connectionManager.setMemoryCallback(async (messages, _conversationId) => {
       if (isShuttingDown()) {
         return;
       }
@@ -296,11 +302,17 @@ function handleConversationUpdate(
 ): void {
   // Handle both formats: { data: { messages: [...] } } and { messages: [...] }
   const messages =
-    message.messages || message.data?.messages || (message.data as any)?.messages;
+    message.messages ||
+    message.data?.messages ||
+    (message.data as any)?.messages;
 
   if (!messages || !Array.isArray(messages)) {
     logger.debug(
-      { connectionId, hasData: !!message.data, hasMessages: !!message.messages },
+      {
+        connectionId,
+        hasData: !!message.data,
+        hasMessages: !!message.messages,
+      },
       'conversation_update_missing_or_invalid_messages'
     );
     return;
@@ -340,14 +352,18 @@ async function handleConversationSwitch(
     };
   }
 ): Promise<void> {
-  const conversationId =
-    message.conversationId || message.data?.conversationId;
-  const requestedLanguageCode = message.languageCode || message.data?.languageCode;
+  const conversationId = message.conversationId || message.data?.conversationId;
+  const requestedLanguageCode =
+    message.languageCode || message.data?.languageCode;
   const messages = message.messages || message.data?.messages;
 
   if (!conversationId || !requestedLanguageCode) {
     logger.warn(
-      { connectionId, hasConversationId: !!conversationId, hasLanguageCode: !!requestedLanguageCode },
+      {
+        connectionId,
+        hasConversationId: !!conversationId,
+        hasLanguageCode: !!requestedLanguageCode,
+      },
       'conversation_switch_missing_required_fields'
     );
     ws.send(
@@ -402,11 +418,22 @@ async function handleConversationSwitch(
   try {
     // Switch conversation (waits for pending operations FIRST)
     // This ensures any flashcard/feedback generation in progress uses the OLD language
-    await connectionManager.switchConversation(
+    // Returns false if another switch is already in progress
+    const switched = await connectionManager.switchConversation(
       conversationId,
       languageCode,
       messages
     );
+
+    if (!switched) {
+      // Another switch is in progress - don't update processors or send ready signal
+      // The in-progress switch will complete and send its own conversation_ready
+      logger.warn(
+        { connectionId, conversationId, languageCode },
+        'conversation_switch_rejected_already_switching'
+      );
+      return;
+    }
 
     // Update processors with new language AFTER pending operations complete
     // This ensures flashcard generation for the old conversation uses the old language
@@ -419,6 +446,7 @@ async function handleConversationSwitch(
     }
     if (feedbackProcessor) {
       feedbackProcessor.setLanguage(languageCode);
+      feedbackProcessor.reset();
     }
     if (memoryProcessor) {
       memoryProcessor.setLanguage(languageCode);
@@ -469,9 +497,10 @@ function handleUserContext(
 
   // Validate language code
   const supportedCodes = getSupportedLanguageCodes();
-  const validatedLanguageCode = languageCode && supportedCodes.includes(languageCode)
-    ? languageCode
-    : currentAttrs.languageCode || DEFAULT_LANGUAGE_CODE;
+  const validatedLanguageCode =
+    languageCode && supportedCodes.includes(languageCode)
+      ? languageCode
+      : currentAttrs.languageCode || DEFAULT_LANGUAGE_CODE;
 
   connectionAttributes.set(connectionId, {
     ...currentAttrs,
@@ -484,7 +513,7 @@ function handleUserContext(
   const manager = connectionManagers.get(connectionId);
   if (manager && validatedLanguageCode !== currentAttrs.languageCode) {
     manager.setLanguage(validatedLanguageCode);
-    
+
     // Update processors with new language
     const flashcardProcessor = flashcardProcessors.get(connectionId);
     const feedbackProcessor = feedbackProcessors.get(connectionId);
@@ -534,7 +563,7 @@ function handleFlashcardClicked(
       english: card.english || card.translation || '',
       source: 'ui',
       timezone: attrs.timezone || '',
-      languageCode: 'es',
+      languageCode: attrs.languageCode || DEFAULT_LANGUAGE_CODE,
     });
   } catch (error) {
     logger.error({ err: error, connectionId }, 'flashcard_click_record_error');
@@ -565,37 +594,6 @@ function handleTextMessage(
   connectionManager.sendTextMessage(text.trim());
 }
 
-/**
- * Convert audio data to base64 string for WebSocket transmission
- * Inworld TTS returns Float32 PCM in [-1.0, 1.0] range
- */
-function convertAudioToBase64(audio: {
-  data?: string | number[] | Float32Array;
-  sampleRate?: number;
-}): { base64: string; format: 'float32' | 'int16' } | null {
-  if (!audio.data) return null;
-
-  if (typeof audio.data === 'string') {
-    // Already base64 - assume Int16 format for backwards compatibility
-    return { base64: audio.data, format: 'int16' };
-  }
-
-  // Inworld SDK returns audio.data as an array of raw bytes (0-255)
-  // These bytes ARE the Float32 PCM data in IEEE 754 format (4 bytes per sample)
-  const audioBuffer = Array.isArray(audio.data)
-    ? Buffer.from(audio.data)
-    : Buffer.from(
-        audio.data.buffer,
-        audio.data.byteOffset,
-        audio.data.byteLength
-      );
-
-  return {
-    base64: audioBuffer.toString('base64'),
-    format: 'float32',
-  };
-}
-
 async function handleTTSPronounce(
   connectionId: string,
   ws: WebSocket,
@@ -624,8 +622,11 @@ async function handleTTSPronounce(
   try {
     // Get language from connection manager (current conversation language)
     const connectionManager = connectionManagers.get(connectionId);
-    const languageCode = connectionManager?.getLanguageCode() || message.languageCode || DEFAULT_LANGUAGE_CODE;
-    
+    const languageCode =
+      connectionManager?.getLanguageCode() ||
+      message.languageCode ||
+      DEFAULT_LANGUAGE_CODE;
+
     logger.debug(
       { connectionId, languageCode, textLength: text.length },
       'tts_pronounce_starting'

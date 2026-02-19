@@ -20,6 +20,7 @@ export interface ConversationMessage {
 export class FeedbackProcessor {
   private languageCode: string = DEFAULT_LANGUAGE_CODE;
   private languageConfig: LanguageConfig;
+  private feedbackHistory: string[] = [];
 
   constructor(languageCode: string = DEFAULT_LANGUAGE_CODE) {
     this.languageCode = languageCode;
@@ -41,9 +42,16 @@ export class FeedbackProcessor {
   async generateFeedback(
     messages: ConversationMessage[],
     currentTranscript: string,
-    userContext?: UserContextInterface
+    userContext?: UserContextInterface,
+    languageCodeOverride?: string
   ): Promise<string> {
     const executor = getResponseFeedbackGraph();
+
+    // Use override language if provided (snapshotted from processing start time),
+    // otherwise fall back to processor's current language
+    const effectiveLanguageConfig = languageCodeOverride
+      ? getLanguageConfig(languageCodeOverride)
+      : this.languageConfig;
 
     // Remove the last assistant message so conversation ends with user's utterance
     let conversationMessages = messages;
@@ -54,11 +62,15 @@ export class FeedbackProcessor {
       conversationMessages = messages.slice(0, -1);
     }
 
+    // Get last 5 feedback items to avoid repetition
+    const previousFeedback = this.feedbackHistory.slice(-5);
+
     try {
       const input: ResponseFeedbackInput = {
         messages: conversationMessages,
         currentTranscript: currentTranscript,
-        targetLanguage: this.languageConfig.name,
+        targetLanguage: effectiveLanguageConfig.name,
+        previousFeedback: previousFeedback,
       };
 
       let executionResult;
@@ -79,6 +91,12 @@ export class FeedbackProcessor {
       }
 
       const feedback = finalData as unknown as string;
+
+      // Track feedback history to avoid repetition
+      if (feedback) {
+        this.feedbackHistory.push(feedback);
+      }
+
       return feedback || '';
     } catch (error) {
       logger.error({ err: error }, 'feedback_generation_error');
@@ -87,6 +105,6 @@ export class FeedbackProcessor {
   }
 
   reset() {
-    // No state to reset for feedback processor
+    this.feedbackHistory = [];
   }
 }

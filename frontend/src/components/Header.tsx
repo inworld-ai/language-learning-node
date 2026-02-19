@@ -8,7 +8,7 @@ export function Header() {
   const { user, isLoading, isConfigured, signUp, signIn, signOut } = useAuth();
 
   const [showAuthForm, setShowAuthForm] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -100,17 +100,19 @@ export function Header() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <h1 className="header-logo">Inworld Language Tutor</h1>
+          <h1 className="header-logo">Inworld Immersive Tutor</h1>
         </div>
 
         <div className="header-right">
-          {/* Connection Status - Always Visible */}
-          <div className="header-connection-status">
-            <span className={`status-dot ${connectionStatus}`} />
-            <span className="connection-status-text">
-              {statusMessages[connectionStatus] || 'Unknown'}
-            </span>
-          </div>
+          {/* Connection Status - Only show when NOT connected */}
+          {connectionStatus !== 'connected' && (
+            <div className="header-connection-status">
+              <span className={`status-dot ${connectionStatus}`} />
+              <span className="connection-status-text">
+                {statusMessages[connectionStatus] || 'Unknown'}
+              </span>
+            </div>
+          )}
 
           {/* Auth Section - Always Visible */}
           {isConfigured && (
@@ -144,7 +146,10 @@ export function Header() {
                   </button>
                   {showAuthForm && (
                     <div ref={authFormRef} className="header-auth-form-wrapper">
-                      <form onSubmit={handleSubmit} className="header-auth-form">
+                      <form
+                        onSubmit={handleSubmit}
+                        className="header-auth-form"
+                      >
                         <div className="header-auth-form-header">
                           {isSignUp ? 'Create Account' : 'Sign In'}
                           <button
@@ -210,7 +215,11 @@ export function Header() {
 
           {/* Logo */}
           <div>
-            <img src="/favicon.svg" alt="Inworld Language Tutor" className="logo-icon" />
+            <img
+              src="/favicon.svg"
+              alt="Inworld Language Tutor"
+              className="logo-icon"
+            />
           </div>
         </div>
       </div>

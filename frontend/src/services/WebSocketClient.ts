@@ -106,10 +106,8 @@ export class WebSocketClient {
           this.reconnectAttempts = 0;
           this.emit('connection', 'connected');
 
-          // Start ping/pong for iOS
-          if (this.isIOS) {
-            this.startPingPong();
-          }
+          // Start ping/pong to keep connection alive
+          this.startPingPong();
 
           resolve();
         };
@@ -143,10 +141,9 @@ export class WebSocketClient {
 
           this.stopPingPong();
 
-          // Only attempt reconnect if not intentionally disconnected
+          // Attempt reconnect on any unexpected close (skip only intentional disconnects)
           if (
             !this.isIntentionalDisconnect &&
-            !event.wasClean &&
             this.reconnectAttempts < this.maxReconnectAttempts
           ) {
             this.scheduleReconnect();
@@ -198,7 +195,6 @@ export class WebSocketClient {
     [key: string]: unknown;
   }): void {
     switch (message.type) {
-
       case 'transcription':
         this.emit('transcription', {
           text: message.text,
@@ -218,7 +214,10 @@ export class WebSocketClient {
         break;
 
       case 'flashcards_generated':
-        this.emit('flashcards_generated', message.flashcards as Flashcard[]);
+        this.emit('flashcards_generated', {
+          flashcards: message.flashcards as Flashcard[],
+          conversationId: message.conversationId,
+        });
         break;
 
       case 'feedback_generated':
