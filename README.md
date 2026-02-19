@@ -172,7 +172,7 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 | `ASSEMBLY_AI_API_KEY`       | Yes      | AssemblyAI API key                                                 |
 | `PORT`                      | No       | Server port (default: 3000)                                        |
 | `LOG_LEVEL`                 | No       | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default: info) |
-| `NODE_ENV`                  | No       | `development` or `production`                                      |
+| `NODE_ENV`                  | No       | Set to `production` for production log format                      |
 | `ASSEMBLY_AI_EAGERNESS`     | No       | Turn detection: `low`, `medium`, `high` (default: high)            |
 | `SUPABASE_URL`              | No       | Supabase project URL (enables memory feature)                      |
 | `SUPABASE_SECRET_KEY`       | No       | Supabase secret key (for backend memory storage)                   |
@@ -180,11 +180,11 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 ## Testing
 
 ```bash
-# Run all tests (from backend/)
-cd backend && npm test
+# Run all tests (backend + frontend)
+npm test --prefix backend
 
 # Backend tests only
-npm test --prefix backend -- --config vitest.config.ts
+npm run test:backend --prefix backend
 
 # Frontend tests only
 npm test --prefix frontend
