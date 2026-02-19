@@ -29,7 +29,7 @@ Thank you for your interest in contributing to the Language Learning App! This d
    ```
 
 4. **Set up environment variables**:
-   Create a `.env` file in the root directory:
+   Create a `backend/.env` file:
 
    ```bash
    INWORLD_API_KEY=your_api_key_here
@@ -39,8 +39,8 @@ Thank you for your interest in contributing to the Language Learning App! This d
 5. **Verify the setup**:
    ```bash
    npm run build
-   npm run lint
-   npm run format:check
+   npm run lint --prefix backend
+   npm run lint --prefix frontend
    ```
 
 ## Development Workflow
@@ -60,12 +60,18 @@ Thank you for your interest in contributing to the Language Learning App! This d
 3. **Run code quality checks** before committing:
 
    ```bash
-   npm run lint          # Check for linting errors
-   npm run lint:fix      # Auto-fix linting issues
-   npm run format        # Format code with Prettier
-   npm run format:check  # Verify formatting
-   npm run type-check    # Check TypeScript types
-   npm run build         # Ensure code compiles
+   # Backend
+   npm run lint --prefix backend           # Check for linting errors
+   npm run lint:fix --prefix backend       # Auto-fix linting issues
+   npm run format:check --prefix backend   # Verify formatting
+   npm run type-check --prefix backend     # Check TypeScript types
+
+   # Frontend
+   npm run lint --prefix frontend
+   npm run format:check --prefix frontend
+
+   # Build both
+   npm run build
    ```
 
 4. **Commit your changes**:
@@ -90,7 +96,7 @@ Thank you for your interest in contributing to the Language Learning App! This d
 ### Formatting
 
 - Code is automatically formatted with Prettier
-- Run `npm run format` before committing
+- Run `npm run format --prefix backend` and `npm run format --prefix frontend` before committing
 - Maximum line length: 80 characters
 - Use single quotes for strings
 - Use semicolons
@@ -99,8 +105,7 @@ Thank you for your interest in contributing to the Language Learning App! This d
 
 - ESLint is configured with TypeScript support
 - All linting errors must be resolved before submitting a PR
-- Run `npm run lint:fix` to auto-fix issues where possible
-- Frontend JavaScript files are excluded from linting
+- Run `npm run lint:fix --prefix backend` or `npm run lint:fix --prefix frontend` to auto-fix issues
 
 ### File Structure
 
@@ -129,7 +134,7 @@ language-learning-node/
 │   └── vitest.config.ts  # Frontend test config
 ├── supabase/
 │   └── migrations/       # Database schema
-└── deploy/               # Deployment configurations
+└── render.yaml           # Render deployment config
 ```
 
 ## Pull Request Process
@@ -151,8 +156,8 @@ language-learning-node/
 3. **PR Requirements**:
    - All tests pass (if applicable)
    - Code follows style guidelines
-   - Linting passes (`npm run lint`)
-   - Type checking passes (`npm run type-check`)
+   - Linting passes (`npm run lint --prefix backend && npm run lint --prefix frontend`)
+   - Type checking passes (`npm run type-check --prefix backend`)
    - Build succeeds (`npm run build`)
    - Documentation is updated if needed
 
