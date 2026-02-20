@@ -294,12 +294,34 @@ function handleConversationUpdate(
   connectionId: string,
   connectionManager: ConnectionManager,
   message: {
+    conversationId?: string;
     data?: {
+      conversationId?: string;
       messages?: Array<{ role: string; content: string; timestamp?: string }>;
     };
     messages?: Array<{ role: string; content: string; timestamp?: string }>;
   }
 ): void {
+  const incomingConversationId =
+    message.conversationId || message.data?.conversationId;
+  const currentConversationId = connectionManager.getConversationId();
+
+  if (
+    incomingConversationId &&
+    currentConversationId &&
+    incomingConversationId !== currentConversationId
+  ) {
+    logger.info(
+      {
+        connectionId,
+        incomingConversationId,
+        currentConversationId,
+      },
+      'ignoring_stale_conversation_update'
+    );
+    return;
+  }
+
   // Handle both formats: { data: { messages: [...] } } and { messages: [...] }
   const messages =
     message.messages ||
