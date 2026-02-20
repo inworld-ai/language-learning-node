@@ -5,6 +5,8 @@
  * Environment variables can override defaults where appropriate.
  */
 
+export type STTProvider = 'assembly' | 'soniox';
+
 export interface AssemblyAITurnDetectionSettings {
   endOfTurnConfidenceThreshold: number;
   minEndOfTurnSilenceWhenConfident: number;
@@ -59,11 +61,45 @@ const assemblyAIPresets: Record<
   },
 };
 
+export interface SonioxEndpointSettings {
+  maxEndpointDelayMs: number;
+  languageHints: string[];
+  description: string;
+}
+
+/**
+ * Soniox endpoint detection presets mapped to the same eagerness levels.
+ * max_endpoint_delay_ms controls how quickly Soniox returns endpoints (500-3000ms).
+ * @see https://soniox.com/docs/stt/rt/endpoint-detection
+ */
+const sonioxPresets: Record<AssemblyAIEagerness, SonioxEndpointSettings> = {
+  high: {
+    maxEndpointDelayMs: 500,
+    languageHints: ['en', 'es'],
+    description: 'Aggressive - fastest endpoint detection (500ms)',
+  },
+  medium: {
+    maxEndpointDelayMs: 1000,
+    languageHints: ['en', 'es'],
+    description: 'Balanced - moderate endpoint delay (1000ms)',
+  },
+  low: {
+    maxEndpointDelayMs: 2000,
+    languageHints: ['en', 'es'],
+    description: 'Conservative - patient endpoint detection (2000ms)',
+  },
+};
+
 export const serverConfig = {
   /**
    * HTTP server port
    */
   port: Number(process.env.PORT) || 3000,
+
+  /**
+   * STT provider selection ('assembly' | 'soniox')
+   */
+  sttProvider: (process.env.STT_PROVIDER || 'assembly') as STTProvider,
 
   /**
    * Audio processing settings
@@ -84,6 +120,15 @@ export const serverConfig = {
       'high') as AssemblyAIEagerness,
     /** Format turns in output (typically false for real-time processing) */
     formatTurns: false,
+  },
+
+  /**
+   * Soniox speech-to-text configuration
+   */
+  soniox: {
+    /** Endpoint detection eagerness level (reuses the same 'low'|'medium'|'high' scale) */
+    eagerness: (process.env.SONIOX_EAGERNESS ||
+      'high') as AssemblyAIEagerness,
   },
 
   /**
@@ -110,4 +155,13 @@ export function getAssemblyAISettingsForEagerness(
   eagerness: AssemblyAIEagerness
 ): AssemblyAITurnDetectionSettings {
   return assemblyAIPresets[eagerness];
+}
+
+/**
+ * Get Soniox endpoint detection settings for the configured eagerness level.
+ * Reads SONIOX_EAGERNESS from process.env at call time (after dotenv loads).
+ */
+export function getSonioxSettings(): SonioxEndpointSettings {
+  const eagerness = (process.env.SONIOX_EAGERNESS || 'high') as AssemblyAIEagerness;
+  return sonioxPresets[eagerness];
 }

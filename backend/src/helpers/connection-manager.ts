@@ -4,7 +4,7 @@
  * This replaces the AudioProcessor for Inworld Runtime 0.9.
  * Key differences from AudioProcessor:
  * - Uses MultimodalStreamManager to feed audio to a long-running graph
- * - VAD is handled inside the graph by AssemblyAI (not external Silero)
+ * - VAD is handled inside the graph by the STT provider (AssemblyAI or Soniox)
  * - Graph runs continuously for the session duration
  */
 
@@ -1085,8 +1085,8 @@ export class ConnectionManager {
     // End the multimodal stream
     this.multimodalStreamManager.end();
 
-    // Close AssemblyAI session
-    await this.graphWrapper.assemblyAINode.closeSession(this.sessionId);
+    // Close STT session
+    await this.graphWrapper.sttNode.closeSession(this.sessionId);
 
     // Remove from connections map
     delete this.connections[this.sessionId];

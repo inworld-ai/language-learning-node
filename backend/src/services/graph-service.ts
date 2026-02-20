@@ -19,6 +19,7 @@ import { getResponseFeedbackGraph } from '../graphs/response-feedback-graph.js';
 import { initializeTTSGraphs } from '../graphs/simple-tts-graph.js';
 import { serverLogger as logger } from '../utils/logger.js';
 import { connections } from './state.js';
+import { STTProvider } from '../config/server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,16 +32,33 @@ export function getGraphWrapper(): ConversationGraphWrapper | null {
 }
 
 export async function initializeGraph(): Promise<void> {
-  const assemblyAIApiKey = process.env.ASSEMBLY_AI_API_KEY;
-  if (!assemblyAIApiKey) {
-    throw new Error('ASSEMBLY_AI_API_KEY environment variable is required');
+  // Read STT_PROVIDER from process.env at call time (after dotenv has loaded),
+  // not from serverConfig which is evaluated at module load time before dotenv.
+  const sttProvider = (process.env.STT_PROVIDER || 'assembly') as STTProvider;
+  let sttApiKey: string;
+
+  if (sttProvider === 'soniox') {
+    sttApiKey = process.env.SONIOX_API_KEY || '';
+    if (!sttApiKey) {
+      throw new Error(
+        'SONIOX_API_KEY environment variable is required when STT_PROVIDER=soniox'
+      );
+    }
+  } else {
+    sttApiKey = process.env.ASSEMBLY_AI_API_KEY || '';
+    if (!sttApiKey) {
+      throw new Error(
+        'ASSEMBLY_AI_API_KEY environment variable is required when STT_PROVIDER=assembly'
+      );
+    }
   }
 
-  logger.info('initializing_conversation_graph');
+  logger.info({ sttProvider }, 'initializing_conversation_graph');
   graphWrapper = getConversationGraph({
-    assemblyAIApiKey,
+    sttProvider,
+    sttApiKey,
     connections,
-    defaultLanguageCode: 'es', // Always Spanish
+    defaultLanguageCode: 'es',
   });
   logger.info('conversation_graph_initialized');
 

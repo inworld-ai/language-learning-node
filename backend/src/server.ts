@@ -105,9 +105,10 @@ async function startServer(): Promise<void> {
   try {
     await initializeGraph();
     await exportGraphConfigs();
+    const sttProvider = process.env.STT_PROVIDER || 'assembly';
     server.listen(serverConfig.port, () => {
       logger.info({ port: serverConfig.port }, 'server_started');
-      logger.info('using_inworld_runtime_0.9_with_assemblyai_stt');
+      logger.info({ sttProvider }, 'using_inworld_runtime_0.9_with_stt');
     });
   } catch (error) {
     logger.fatal({ err: error }, 'server_start_failed');
