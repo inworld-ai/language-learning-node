@@ -74,12 +74,29 @@ describe('languages config', () => {
       expect(codes).toContain('de');
     });
 
-    it('matches SUPPORTED_LANGUAGES keys', () => {
+    it('without provider, returns only languages without requiredSttProvider', () => {
       const codes = getSupportedLanguageCodes();
-      expect(codes.length).toBe(Object.keys(SUPPORTED_LANGUAGES).length);
       for (const code of codes) {
         expect(SUPPORTED_LANGUAGES[code]).toBeDefined();
+        expect(SUPPORTED_LANGUAGES[code].requiredSttProvider).toBeUndefined();
       }
+    });
+
+    it('with soniox provider, returns all languages', () => {
+      const codes = getSupportedLanguageCodes('soniox');
+      expect(codes.length).toBe(Object.keys(SUPPORTED_LANGUAGES).length);
+      expect(codes).toContain('zh');
+      expect(codes).toContain('ja');
+      expect(codes).toContain('ko');
+      expect(codes).toContain('ru');
+    });
+
+    it('with assembly provider, excludes soniox-only languages', () => {
+      const codes = getSupportedLanguageCodes('assembly');
+      expect(codes).not.toContain('zh');
+      expect(codes).not.toContain('ja');
+      expect(codes).not.toContain('ko');
+      expect(codes).not.toContain('ru');
     });
   });
 

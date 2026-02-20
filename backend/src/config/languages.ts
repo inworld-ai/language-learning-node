@@ -8,6 +8,7 @@
  */
 
 import { createLogger } from '../utils/logger.js';
+import type { STTProvider } from './server.js';
 
 const logger = createLogger('Languages');
 
@@ -46,6 +47,9 @@ export interface LanguageConfig {
 
   // Example conversation topics specific to this language's culture
   exampleTopics: string[];
+
+  // If set, this language is only available when the given STT provider is active
+  requiredSttProvider?: STTProvider;
 }
 
 /**
@@ -235,6 +239,126 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'the Amazon and Brazilian nature',
     ],
   },
+
+  zh: {
+    code: 'zh',
+    name: 'Chinese',
+    nativeName: '中文',
+    flag: '🇨🇳',
+    sttLanguageCode: 'zh-CN',
+    ttsConfig: {
+      speakerId: 'Xiaoyin',
+      modelId: 'inworld-tts-1.5-max',
+      speakingRate: 1,
+      temperature: 1.1,
+      languageCode: 'zh-CN',
+    },
+    teacherPersona: {
+      name: '李老师 (Lǐ Lǎoshī)',
+      age: 33,
+      nationality: 'Chinese (Beijing)',
+      description:
+        'a 33 year old Beijinger who loves teaching Mandarin through Chinese culture, food, and modern life',
+    },
+    exampleTopics: [
+      'life in Beijing and Shanghai',
+      'Chinese cuisine and regional flavors',
+      'Chinese festivals and traditions',
+      'modern Chinese pop culture',
+      'travel along the Silk Road',
+    ],
+    requiredSttProvider: 'soniox',
+  },
+
+  ja: {
+    code: 'ja',
+    name: 'Japanese',
+    nativeName: '日本語',
+    flag: '🇯🇵',
+    sttLanguageCode: 'ja-JP',
+    ttsConfig: {
+      speakerId: 'Asuka',
+      modelId: 'inworld-tts-1.5-max',
+      speakingRate: 1,
+      temperature: 1.1,
+      languageCode: 'ja-JP',
+    },
+    teacherPersona: {
+      name: '田中先生 (Tanaka-sensei)',
+      age: 31,
+      nationality: 'Japanese (Tokyo)',
+      description:
+        'a 31 year old Tokyoite who is passionate about teaching Japanese through anime, food, and everyday life',
+    },
+    exampleTopics: [
+      'daily life in Tokyo',
+      'Japanese cuisine from ramen to kaiseki',
+      'anime and manga culture',
+      'Japanese seasons and festivals',
+      'travel through Kyoto and rural Japan',
+    ],
+    requiredSttProvider: 'soniox',
+  },
+
+  ko: {
+    code: 'ko',
+    name: 'Korean',
+    nativeName: '한국어',
+    flag: '🇰🇷',
+    sttLanguageCode: 'ko-KR',
+    ttsConfig: {
+      speakerId: 'Seojun',
+      modelId: 'inworld-tts-1.5-max',
+      speakingRate: 1,
+      temperature: 1.1,
+      languageCode: 'ko-KR',
+    },
+    teacherPersona: {
+      name: '김선생님 (Kim Seonsaengnim)',
+      age: 29,
+      nationality: 'Korean (Seoul)',
+      description:
+        'a 29 year old Seoulite who enjoys teaching Korean through K-pop, K-drama, and Korean street food culture',
+    },
+    exampleTopics: [
+      'life in Seoul and Busan',
+      'Korean food and street food culture',
+      'K-pop and K-drama',
+      'Korean traditions and holidays',
+      'travel through South Korea',
+    ],
+    requiredSttProvider: 'soniox',
+  },
+
+  ru: {
+    code: 'ru',
+    name: 'Russian',
+    nativeName: 'Русский',
+    flag: '🇷🇺',
+    sttLanguageCode: 'ru-RU',
+    ttsConfig: {
+      speakerId: 'Elena',
+      modelId: 'inworld-tts-1.5-max',
+      speakingRate: 1,
+      temperature: 1.1,
+      languageCode: 'ru-RU',
+    },
+    teacherPersona: {
+      name: 'Елена Петровна (Elena Petrovna)',
+      age: 37,
+      nationality: 'Russian (Moscow)',
+      description:
+        'a 37 year old Muscovite who loves teaching Russian through literature, history, and the richness of Russian culture',
+    },
+    exampleTopics: [
+      'life in Moscow and Saint Petersburg',
+      'Russian literature and poetry',
+      'Russian cuisine and tea culture',
+      'Russian music from classical to modern',
+      'the Trans-Siberian Railway and Russian nature',
+    ],
+    requiredSttProvider: 'soniox',
+  },
 };
 
 /**
@@ -255,27 +379,37 @@ export function getLanguageConfig(code: string): LanguageConfig {
 }
 
 /**
- * Get all supported language codes
+ * Get all supported language codes, optionally filtered by STT provider
  */
-export function getSupportedLanguageCodes(): string[] {
-  return Object.keys(SUPPORTED_LANGUAGES);
+export function getSupportedLanguageCodes(sttProvider?: STTProvider): string[] {
+  return Object.values(SUPPORTED_LANGUAGES)
+    .filter(
+      (lang) =>
+        !lang.requiredSttProvider || lang.requiredSttProvider === sttProvider
+    )
+    .map((lang) => lang.code);
 }
 
 /**
- * Get language options for frontend dropdown
+ * Get language options for frontend dropdown, optionally filtered by STT provider
  */
-export function getLanguageOptions(): Array<{
+export function getLanguageOptions(sttProvider?: STTProvider): Array<{
   code: string;
   name: string;
   nativeName: string;
   flag: string;
 }> {
-  return Object.values(SUPPORTED_LANGUAGES).map((lang) => ({
-    code: lang.code,
-    name: lang.name,
-    nativeName: lang.nativeName,
-    flag: lang.flag,
-  }));
+  return Object.values(SUPPORTED_LANGUAGES)
+    .filter(
+      (lang) =>
+        !lang.requiredSttProvider || lang.requiredSttProvider === sttProvider
+    )
+    .map((lang) => ({
+      code: lang.code,
+      name: lang.name,
+      nativeName: lang.nativeName,
+      flag: lang.flag,
+    }));
 }
 
 /**

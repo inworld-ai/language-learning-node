@@ -19,7 +19,7 @@ import {
 } from '../config/languages.js';
 import { serverLogger as logger } from '../utils/logger.js';
 import { getSimpleTTSGraph } from '../graphs/simple-tts-graph.js';
-import { serverConfig } from '../config/server.js';
+import { serverConfig, getSttProvider } from '../config/server.js';
 
 import {
   connections,
@@ -411,7 +411,7 @@ async function handleConversationSwitch(
   }
 
   // Validate language code
-  const supportedCodes = getSupportedLanguageCodes();
+  const supportedCodes = getSupportedLanguageCodes(getSttProvider());
   const languageCode = supportedCodes.includes(requestedLanguageCode)
     ? requestedLanguageCode
     : DEFAULT_LANGUAGE_CODE;
@@ -518,7 +518,7 @@ function handleUserContext(
   const currentAttrs = connectionAttributes.get(connectionId) || {};
 
   // Validate language code
-  const supportedCodes = getSupportedLanguageCodes();
+  const supportedCodes = getSupportedLanguageCodes(getSttProvider());
   const validatedLanguageCode =
     languageCode && supportedCodes.includes(languageCode)
       ? languageCode

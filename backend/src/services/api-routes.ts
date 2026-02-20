@@ -10,6 +10,7 @@ import {
   getLanguageOptions,
   DEFAULT_LANGUAGE_CODE,
 } from '../config/languages.js';
+import { getSttProvider } from '../config/server.js';
 import { serverLogger as logger } from '../utils/logger.js';
 
 export const apiRouter = Router();
@@ -53,7 +54,7 @@ apiRouter.post('/export-anki', async (req, res) => {
 // Languages endpoint
 apiRouter.get('/languages', (_req, res) => {
   try {
-    const languages = getLanguageOptions();
+    const languages = getLanguageOptions(getSttProvider());
     res.json({ languages, defaultLanguage: DEFAULT_LANGUAGE_CODE });
   } catch (error) {
     logger.error({ err: error }, 'get_languages_error');

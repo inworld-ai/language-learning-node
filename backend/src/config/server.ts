@@ -154,6 +154,14 @@ export function getAssemblyAISettingsForEagerness(
 }
 
 /**
+ * Get the active STT provider at call time (after dotenv loads).
+ * Do NOT use serverConfig.sttProvider — it is evaluated at module load time before dotenv.
+ */
+export function getSttProvider(): STTProvider {
+  return (process.env.STT_PROVIDER || 'assembly') as STTProvider;
+}
+
+/**
  * Get Soniox endpoint detection settings for the configured eagerness level.
  * Reads SONIOX_EAGERNESS from process.env at call time (after dotenv loads).
  */
