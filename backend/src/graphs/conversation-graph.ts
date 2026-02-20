@@ -116,7 +116,6 @@ export class ConversationGraphWrapper {
           connections: connections,
           sampleRate: serverConfig.audio.inputSampleRate,
           maxEndpointDelayMs: sonioxSettings.maxEndpointDelayMs,
-          languageHints: sonioxSettings.languageHints,
         },
       });
     } else {

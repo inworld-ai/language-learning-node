@@ -63,7 +63,6 @@ const assemblyAIPresets: Record<
 
 export interface SonioxEndpointSettings {
   maxEndpointDelayMs: number;
-  languageHints: string[];
   description: string;
 }
 
@@ -75,17 +74,14 @@ export interface SonioxEndpointSettings {
 const sonioxPresets: Record<AssemblyAIEagerness, SonioxEndpointSettings> = {
   high: {
     maxEndpointDelayMs: 500,
-    languageHints: ['en', 'es'],
     description: 'Aggressive - fastest endpoint detection (500ms)',
   },
   medium: {
     maxEndpointDelayMs: 1000,
-    languageHints: ['en', 'es'],
     description: 'Balanced - moderate endpoint delay (1000ms)',
   },
   low: {
     maxEndpointDelayMs: 2000,
-    languageHints: ['en', 'es'],
     description: 'Conservative - patient endpoint detection (2000ms)',
   },
 };

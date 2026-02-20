@@ -180,6 +180,23 @@ class SonioxSession {
     }
   }
 
+  /**
+   * Update language hints. If they differ from the current hints, closes the
+   * existing WebSocket so the next ensureConnection() reopens with the new config.
+   */
+  public updateLanguageHints(hints: string[]): void {
+    const sorted = [...hints].sort();
+    const currentSorted = [...this.languageHints].sort();
+    if (sorted.join(',') === currentSorted.join(',')) return;
+
+    logger.info(
+      { sessionId: this.sessionId, from: this.languageHints, to: hints },
+      'language_hints_changed'
+    );
+    this.languageHints = hints;
+    this.closeWebSocket();
+  }
+
   private closeDueToInactivity(): void {
     const inactiveFor = Date.now() - this.lastActivityTime;
     logger.info(
@@ -267,7 +284,7 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
     this.connections = config.connections;
     this.sampleRate = config.sampleRate || 16000;
     this.maxEndpointDelayMs = config.maxEndpointDelayMs ?? 2000;
-    this.languageHints = config.languageHints ?? [];
+    this.languageHints = config.languageHints ?? ['en'];
 
     logger.info(
       {
@@ -346,6 +363,12 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
     // Soniox token accumulation
     let finalTokenTexts: string[] = [];
 
+    // Derive per-session language hints from the connection's active language
+    const targetLang = connection.state.languageCode || 'es';
+    const sessionLanguageHints = targetLang === 'en'
+      ? ['en']
+      : ['en', targetLang];
+
     // Get or create session
     let session = this.sessions.get(sessionId);
     if (!session) {
@@ -354,9 +377,11 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
         this.apiKey,
         this.sampleRate,
         this.maxEndpointDelayMs,
-        this.languageHints
+        sessionLanguageHints
       );
       this.sessions.set(sessionId, session);
+    } else {
+      session.updateLanguageHints(sessionLanguageHints);
     }
 
     // Promise to capture turn result
