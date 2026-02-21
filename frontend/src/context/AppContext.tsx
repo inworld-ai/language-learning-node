@@ -404,9 +404,15 @@ export function AppProvider({ children }: AppProviderProps) {
     };
   }, []);
 
-  // Echo gate: mute mic while TTS is playing to prevent speaker output
-  // from being picked up as user speech on mobile
+  // Echo gate (mobile only): mute mic while TTS is playing to prevent
+  // speaker output from being picked up as user speech. Desktop browsers
+  // have reliable echo cancellation so we leave interruption enabled there.
   useEffect(() => {
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isMobile) return;
+
     const audioPlayer = audioPlayerRef.current;
     const ttsAudioPlayer = ttsAudioPlayerRef.current;
     const audioHandler = audioHandlerRef.current;
