@@ -1819,6 +1819,7 @@ body {
     letter-spacing: 0.02em;
     width: 100%;
     box-sizing: border-box;
+    justify-content: flex-start;
 }
 
 @media (max-width: 768px) {
