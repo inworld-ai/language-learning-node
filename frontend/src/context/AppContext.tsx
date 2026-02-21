@@ -261,6 +261,7 @@ interface AppContextType {
   handleInterrupt: () => void;
   sendTextMessage: (text: string) => void;
   pronounceWord: (text: string) => void;
+  createFlashcardForWord: (word: string) => void;
   // Conversation actions
   selectConversation: (conversationId: string) => void;
   createNewConversation: () => void;
@@ -1332,6 +1333,21 @@ export function AppProvider({ children }: AppProviderProps) {
     [state.connectionStatus]
   );
 
+  // Request flashcard generation for a specific word
+  const createFlashcardForWord = useCallback(
+    (word: string) => {
+      const wsClient = wsClientRef.current;
+      const trimmed = word.trim();
+      if (state.connectionStatus !== 'connected' || !trimmed) return;
+
+      wsClient.send({
+        type: 'create_flashcard_request',
+        word: trimmed,
+      });
+    },
+    [state.connectionStatus]
+  );
+
   // Select a conversation from the sidebar
   const selectConversation = useCallback(
     (conversationId: string) => {
@@ -1673,6 +1689,7 @@ export function AppProvider({ children }: AppProviderProps) {
       handleInterrupt,
       sendTextMessage,
       pronounceWord,
+      createFlashcardForWord,
       selectConversation,
       createNewConversation,
       deleteConversation,
@@ -1691,6 +1708,7 @@ export function AppProvider({ children }: AppProviderProps) {
       handleInterrupt,
       sendTextMessage,
       pronounceWord,
+      createFlashcardForWord,
       selectConversation,
       createNewConversation,
       deleteConversation,

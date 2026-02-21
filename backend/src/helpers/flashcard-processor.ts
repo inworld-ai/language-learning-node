@@ -60,7 +60,8 @@ export class FlashcardProcessor {
     messages: ConversationMessage[],
     count: number = 1,
     userContext?: UserContextInterface,
-    languageCodeOverride?: string
+    languageCodeOverride?: string,
+    forcedWord?: string
   ): Promise<Flashcard[]> {
     const executor = getFlashcardGraph();
 
@@ -81,7 +82,8 @@ export class FlashcardProcessor {
           messages,
           userContext,
           effectiveLanguageCode,
-          effectiveLanguageConfig
+          effectiveLanguageConfig,
+          forcedWord
         )
       );
     }
@@ -109,7 +111,8 @@ export class FlashcardProcessor {
     messages: ConversationMessage[],
     userContext?: UserContextInterface,
     languageCode?: string,
-    languageConfig?: LanguageConfig
+    languageConfig?: LanguageConfig,
+    forcedWord?: string
   ): Promise<Flashcard> {
     // Use explicitly passed language (snapshotted at trigger time) to avoid
     // reading from mutable this.languageCode which may change during async work
@@ -117,7 +120,7 @@ export class FlashcardProcessor {
     const effectiveLanguageConfig = languageConfig || this.languageConfig;
 
     try {
-      const input = {
+      const input: Record<string, unknown> = {
         studentName: 'Student',
         teacherName: effectiveLanguageConfig.teacherPersona.name,
         target_language: effectiveLanguageConfig.name,
@@ -125,6 +128,9 @@ export class FlashcardProcessor {
         messages: messages,
         flashcards: this.existingFlashcards,
       };
+      if (forcedWord) {
+        input.forced_word = forcedWord;
+      }
 
       let executionResult;
       try {

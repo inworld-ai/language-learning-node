@@ -279,6 +279,8 @@ function handleMessage(
       handleTextMessage(connectionId, ws, connectionManager, message);
     } else if (message.type === 'tts_pronounce_request') {
       handleTTSPronounce(connectionId, ws, message);
+    } else if (message.type === 'create_flashcard_request') {
+      handleCreateFlashcardRequest(connectionId, ws, connectionManager, message);
     } else {
       logger.debug(
         { connectionId, messageType: message.type },
@@ -630,7 +632,7 @@ async function handleTTSPronounce(
     return;
   }
 
-  if (text.length > 100) {
+  if (text.length > 500) {
     logger.warn(
       { connectionId, length: text.length },
       'tts_pronounce_text_too_long'
@@ -694,6 +696,98 @@ async function handleTTSPronounce(
     logger.error({ err: error, connectionId }, 'tts_pronounce_error');
     ws.send(
       JSON.stringify({ type: 'tts_pronounce_error', error: 'TTS failed' })
+    );
+  }
+}
+
+async function handleCreateFlashcardRequest(
+  connectionId: string,
+  ws: WebSocket,
+  connectionManager: ConnectionManager,
+  message: { word?: string }
+): Promise<void> {
+  const word = message.word?.trim();
+  if (!word) {
+    ws.send(
+      JSON.stringify({
+        type: 'create_flashcard_error',
+        error: 'No word provided',
+      })
+    );
+    return;
+  }
+
+  const flashcardProcessor = flashcardProcessors.get(connectionId);
+  if (!flashcardProcessor) {
+    ws.send(
+      JSON.stringify({
+        type: 'create_flashcard_error',
+        error: 'No flashcard processor',
+      })
+    );
+    return;
+  }
+
+  const languageCode =
+    connectionManager.getLanguageCode() || DEFAULT_LANGUAGE_CODE;
+  const conversationId = connectionManager.getConversationId();
+
+  const conversationState = connectionManager.getConversationState();
+  const recentMessages = conversationState.messages.slice(-10).map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  logger.info(
+    { connectionId, word, languageCode },
+    'create_flashcard_request'
+  );
+
+  try {
+    const attrs = connectionAttributes.get(connectionId) || {};
+    const userContext = {
+      attributes: { timezone: attrs.timezone || '' },
+      targetingKey: attrs.userId || connectionId,
+    };
+
+    const flashcards = await flashcardProcessor.generateFlashcards(
+      recentMessages,
+      1,
+      userContext,
+      languageCode,
+      word
+    );
+
+    if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
+      ws.send(
+        JSON.stringify({
+          type: 'flashcards_generated',
+          flashcards,
+          conversationId: conversationId || null,
+        })
+      );
+      logger.info(
+        { connectionId, word, targetWord: flashcards[0].targetWord },
+        'flashcard_created_for_word'
+      );
+    } else {
+      ws.send(
+        JSON.stringify({
+          type: 'create_flashcard_error',
+          error: 'Failed to generate flashcard',
+        })
+      );
+    }
+  } catch (error) {
+    logger.error(
+      { err: error, connectionId, word },
+      'create_flashcard_request_error'
+    );
+    ws.send(
+      JSON.stringify({
+        type: 'create_flashcard_error',
+        error: 'Failed to generate flashcard',
+      })
     );
   }
 }

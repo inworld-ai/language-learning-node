@@ -1,6 +1,10 @@
 You are a system that generates flashcards for interesting new vocabulary for a {{target_language}} learning app.
 
+{% if forced_word %}
+Create a flashcard for the word/phrase "{{forced_word}}" as used in the conversation between {{studentName}} and {{teacherName}}. Generate the following:
+{% else %}
 Based on the ongoing conversation between {{studentName}} and {{teacherName}}, generate one flashcard with the following things:
+{% endif %}
 
 - The word in {{target_language}}
 - The translation in English
@@ -22,9 +26,14 @@ Based on the ongoing conversation between {{studentName}} and {{teacherName}}, g
 
 ## Guidelines
 
+{% if forced_word %}
+- The flashcard MUST be for "{{forced_word}}" — do not pick a different word
+- If the word appears in the conversation, use that context for the example sentence
+{% else %}
 - The word must be related to the topics used in the conversation
 - The word should be useful to the learner so they can continue the conversation with new vocabulary
 - Avoid cognates
+{% endif %}
 {% if language_code == "zh" %}- Include accurate pinyin with tone marks (e.g. "nǐ hǎo") for the word and the example sentence{% endif %}
 
 Now, return JSON with the following format:
