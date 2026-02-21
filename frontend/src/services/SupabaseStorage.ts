@@ -212,7 +212,10 @@ export class SupabaseStorage {
       targetWord: f.target_word,
       english: f.english,
       example: f.example,
+      exampleTranslation: f.example_translation ?? undefined,
       mnemonic: f.mnemonic,
+      pinyin: f.pinyin ?? undefined,
+      examplePinyin: f.example_pinyin ?? undefined,
       timestamp: f.created_at,
       languageCode: f.language_code,
     }));
@@ -229,7 +232,10 @@ export class SupabaseStorage {
       target_word: f.targetWord || f.spanish || '',
       english: f.english,
       example: f.example,
+      example_translation: f.exampleTranslation || null,
       mnemonic: f.mnemonic,
+      pinyin: f.pinyin || null,
+      example_pinyin: f.examplePinyin || null,
     }));
 
     // Use upsert to handle duplicates gracefully
@@ -262,7 +268,10 @@ export class SupabaseStorage {
       targetWord: f.target_word,
       english: f.english,
       example: f.example,
+      exampleTranslation: f.example_translation ?? undefined,
       mnemonic: f.mnemonic,
+      pinyin: f.pinyin ?? undefined,
+      examplePinyin: f.example_pinyin ?? undefined,
       timestamp: f.created_at,
       languageCode: f.language_code,
       conversationId: f.conversation_id,
@@ -282,7 +291,10 @@ export class SupabaseStorage {
       target_word: f.targetWord || f.spanish || '',
       english: f.english,
       example: f.example,
+      example_translation: f.exampleTranslation || null,
       mnemonic: f.mnemonic,
+      pinyin: f.pinyin || null,
+      example_pinyin: f.examplePinyin || null,
     }));
 
     // Use upsert to handle duplicates gracefully

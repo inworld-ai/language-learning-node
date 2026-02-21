@@ -51,7 +51,7 @@ class FlashcardParserNode extends CustomNode {
       const jsonMatch = textContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        return {
+        const result: Record<string, unknown> = {
           id: v4(),
           // Support both new 'targetWord' format and legacy 'spanish' format
           targetWord: parsed.targetWord ?? parsed.spanish ?? '',
@@ -60,6 +60,10 @@ class FlashcardParserNode extends CustomNode {
           mnemonic: parsed.mnemonic ?? '',
           timestamp: new Date().toISOString(),
         };
+        if (parsed.exampleTranslation) result.exampleTranslation = parsed.exampleTranslation;
+        if (parsed.pinyin) result.pinyin = parsed.pinyin;
+        if (parsed.examplePinyin) result.examplePinyin = parsed.examplePinyin;
+        return result;
       }
     } catch (error) {
       logger.error({ err: error }, 'failed_to_parse_flashcard_json');

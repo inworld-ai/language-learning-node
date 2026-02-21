@@ -1479,6 +1479,15 @@ body {
     padding: 0 8px;
 }
 
+.flashcard-pinyin {
+    font-size: 18px;
+    font-weight: 400;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
 .flashcard-english {
     font-size: 24px;
     font-weight: 600;
@@ -1501,6 +1510,64 @@ body {
     overflow-wrap: break-word;
     hyphens: auto;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.flashcard-example.pronounceable {
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 6px 10px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.flashcard-example.pronounceable:hover {
+    background-color: rgba(59, 130, 246, 0.08);
+    color: #2563eb;
+}
+
+.flashcard-example.pronounceable:active {
+    background-color: rgba(59, 130, 246, 0.15);
+}
+
+.flashcard-example.pronouncing {
+    color: #2563eb;
+    background-color: rgba(59, 130, 246, 0.08);
+}
+
+.example-speaker-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+}
+
+.flashcard-example.pronounceable:hover .example-speaker-icon {
+    opacity: 0.8;
+}
+
+.flashcard-example.pronouncing .example-speaker-icon {
+    opacity: 1;
+}
+
+.flashcard-example-pinyin {
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+    margin-bottom: 4px;
+    margin-top: -10px;
+    letter-spacing: 0.3px;
+}
+
+.flashcard-example-translation {
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+    margin-bottom: 12px;
+    line-height: 1.4;
 }
 
 .flashcard-mnemonic {
@@ -1550,6 +1617,10 @@ body {
     .flashcard-target-word {
         font-size: 24px;
     }
+
+    .flashcard-pinyin {
+        font-size: 14px;
+    }
     
     .flashcard-english {
         font-size: 18px;
@@ -1558,6 +1629,11 @@ body {
     .flashcard-example {
         font-size: 13px;
         padding: 0 8px;
+    }
+
+    .flashcard-example-pinyin,
+    .flashcard-example-translation {
+        font-size: 11px;
     }
     
     .flashcard-mnemonic {

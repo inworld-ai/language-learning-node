@@ -30,7 +30,10 @@ export class AnkiExporter {
         return;
       }
 
-      const front = targetWord.trim();
+      let front = targetWord.trim();
+      if (flashcard.pinyin) {
+        front += `<br><span style="font-size: 14px; color: #888;">${this.escapeHtml(flashcard.pinyin)}</span>`;
+      }
       const back = this.formatCardBack(flashcard);
 
       // Add tags for organization
@@ -61,7 +64,15 @@ export class AnkiExporter {
     let back = `<div style="font-size: 18px; margin-bottom: 10px;">${this.escapeHtml(flashcard.english)}</div>`;
 
     if (flashcard.example && flashcard.example.trim()) {
-      back += `<div style="font-size: 14px; color: #666; font-style: italic; margin: 10px 0; padding: 8px; background-color: #f5f5f5; border-left: 3px solid #2196F3;">${this.escapeHtml(flashcard.example)}</div>`;
+      let exampleHtml = this.escapeHtml(flashcard.example);
+      if (flashcard.examplePinyin) {
+        exampleHtml += `<br><span style="font-size: 12px; color: #999;">${this.escapeHtml(flashcard.examplePinyin)}</span>`;
+      }
+      back += `<div style="font-size: 14px; color: #666; font-style: italic; margin: 10px 0; padding: 8px; background-color: #f5f5f5; border-left: 3px solid #2196F3;">${exampleHtml}</div>`;
+    }
+
+    if (flashcard.exampleTranslation && flashcard.exampleTranslation.trim()) {
+      back += `<div style="font-size: 13px; color: #888; margin: -4px 0 10px 0; padding: 0 8px;">${this.escapeHtml(flashcard.exampleTranslation)}</div>`;
     }
 
     if (flashcard.mnemonic && flashcard.mnemonic.trim()) {

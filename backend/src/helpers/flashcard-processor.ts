@@ -15,7 +15,10 @@ export interface Flashcard {
   targetWord: string; // The word in the target language (was 'spanish')
   english: string;
   example: string;
+  exampleTranslation?: string;
   mnemonic: string;
+  pinyin?: string;
+  examplePinyin?: string;
   timestamp: string;
   languageCode?: string; // Track which language this card belongs to
 }
@@ -118,6 +121,7 @@ export class FlashcardProcessor {
         studentName: 'Student',
         teacherName: effectiveLanguageConfig.teacherPersona.name,
         target_language: effectiveLanguageConfig.name,
+        language_code: effectiveLanguageCode,
         messages: messages,
         flashcards: this.existingFlashcards,
       };

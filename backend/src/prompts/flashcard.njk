@@ -5,7 +5,9 @@ Based on the ongoing conversation between {{studentName}} and {{teacherName}}, g
 - The word in {{target_language}}
 - The translation in English
 - An example sentence in {{target_language}}
+- An English translation of the example sentence
 - A mnemonic to help the student remember the word (in English)
+{% if language_code == "zh" %}- The pinyin romanization for both the word and the example sentence{% endif %}
 
 ## Conversation
 
@@ -23,6 +25,7 @@ Based on the ongoing conversation between {{studentName}} and {{teacherName}}, g
 - The word must be related to the topics used in the conversation
 - The word should be useful to the learner so they can continue the conversation with new vocabulary
 - Avoid cognates
+{% if language_code == "zh" %}- Include accurate pinyin with tone marks (e.g. "nǐ hǎo") for the word and the example sentence{% endif %}
 
 Now, return JSON with the following format:
 
@@ -30,5 +33,8 @@ Now, return JSON with the following format:
   "targetWord": "string",
   "english": "string",
   "example": "string",
-  "mnemonic": "string"
+  "exampleTranslation": "string (English translation of the example sentence)",
+{% if language_code == "zh" %}  "pinyin": "string (pinyin for the word)",
+  "examplePinyin": "string (pinyin for the example sentence)",
+{% endif %}  "mnemonic": "string"
 }

@@ -31,6 +31,14 @@ export function FlashcardsSection() {
     [pronounceWord]
   );
 
+  const handlePronounceText = useCallback(
+    (text: string) => {
+      if (!text) return;
+      pronounceWord(text);
+    },
+    [pronounceWord]
+  );
+
   const exportToAnki = useCallback(async () => {
     const validFlashcards = flashcards.filter((flashcard) => {
       const targetWord = flashcard.targetWord || flashcard.spanish;
@@ -138,7 +146,14 @@ export function FlashcardsSection() {
                   flashcard={flashcard}
                   onCardClick={handleCardClick}
                   onPronounce={handlePronounce}
+                  onPronounceText={handlePronounceText}
                   isPronouncing={pronouncingCardId === cardId}
+                  isPronouncingSentence={
+                    pronouncingCardId ===
+                    (flashcard.example ||
+                      flashcard.example_sentence ||
+                      '')
+                  }
                 />
               );
             })
