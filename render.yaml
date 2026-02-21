@@ -12,8 +12,6 @@ services:
         value: production
       - key: INWORLD_API_KEY
         sync: false
-      - key: STT_PROVIDER
-        value: assembly
       - key: ASSEMBLY_AI_API_KEY
         sync: false
       - key: SONIOX_API_KEY

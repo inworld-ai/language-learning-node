@@ -10,7 +10,7 @@ React + TypeScript frontend for the Inworld Language Tutor application.
    npm install
    ```
 
-2. Create `.env.local` with your Supabase credentials (optional, for auth/sync):
+2. (Optional) Create `.env.local` with your Supabase credentials:
    ```bash
    VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
    VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key

@@ -19,7 +19,7 @@ import { getResponseFeedbackGraph } from '../graphs/response-feedback-graph.js';
 import { initializeTTSGraphs } from '../graphs/simple-tts-graph.js';
 import { serverLogger as logger } from '../utils/logger.js';
 import { connections } from './state.js';
-import { STTProvider } from '../config/server.js';
+import { getSttProvider } from '../config/server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,26 +32,18 @@ export function getGraphWrapper(): ConversationGraphWrapper | null {
 }
 
 export async function initializeGraph(): Promise<void> {
-  // Read STT_PROVIDER from process.env at call time (after dotenv has loaded),
-  // not from serverConfig which is evaluated at module load time before dotenv.
-  const sttProvider = (process.env.STT_PROVIDER || 'assembly') as STTProvider;
-  let sttApiKey: string;
+  const sonioxKey = process.env.SONIOX_API_KEY;
+  const assemblyKey = process.env.ASSEMBLY_AI_API_KEY;
 
-  if (sttProvider === 'soniox') {
-    sttApiKey = process.env.SONIOX_API_KEY || '';
-    if (!sttApiKey) {
-      throw new Error(
-        'SONIOX_API_KEY environment variable is required when STT_PROVIDER=soniox'
-      );
-    }
-  } else {
-    sttApiKey = process.env.ASSEMBLY_AI_API_KEY || '';
-    if (!sttApiKey) {
-      throw new Error(
-        'ASSEMBLY_AI_API_KEY environment variable is required when STT_PROVIDER=assembly'
-      );
-    }
+  if (!sonioxKey && !assemblyKey) {
+    throw new Error(
+      'No speech-to-text API key configured. ' +
+        'Set either SONIOX_API_KEY or ASSEMBLY_AI_API_KEY in your backend/.env file.'
+    );
   }
+
+  const sttProvider = getSttProvider();
+  const sttApiKey = sttProvider === 'soniox' ? sonioxKey! : assemblyKey!;
 
   logger.info({ sttProvider }, 'initializing_conversation_graph');
   graphWrapper = getConversationGraph({

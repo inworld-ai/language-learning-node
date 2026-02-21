@@ -93,11 +93,6 @@ export const serverConfig = {
   port: Number(process.env.PORT) || 3000,
 
   /**
-   * STT provider selection ('assembly' | 'soniox')
-   */
-  sttProvider: (process.env.STT_PROVIDER || 'assembly') as STTProvider,
-
-  /**
    * Audio processing settings
    */
   audio: {
@@ -154,11 +149,12 @@ export function getAssemblyAISettingsForEagerness(
 }
 
 /**
- * Get the active STT provider at call time (after dotenv loads).
- * Do NOT use serverConfig.sttProvider — it is evaluated at module load time before dotenv.
+ * Auto-detect the active STT provider based on which API key is configured.
+ * SONIOX_API_KEY takes priority if both keys are present.
  */
 export function getSttProvider(): STTProvider {
-  return (process.env.STT_PROVIDER || 'assembly') as STTProvider;
+  if (process.env.SONIOX_API_KEY) return 'soniox';
+  return 'assembly';
 }
 
 /**
