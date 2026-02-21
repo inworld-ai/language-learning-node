@@ -214,13 +214,17 @@ export function Header() {
           )}
 
           {/* Logo */}
-          <div>
+          <a
+            href="https://www.inworld.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <img
               src="/favicon.svg"
               alt="Inworld Language Tutor"
               className="logo-icon"
             />
-          </div>
+          </a>
         </div>
       </div>
     </header>

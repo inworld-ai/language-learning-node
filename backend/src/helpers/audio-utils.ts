@@ -3,6 +3,50 @@
  */
 
 /**
+ * Encode raw PCM16 samples as a WAV file buffer.
+ * Returns a complete .wav file that can be written to disk or embedded in an Anki package.
+ */
+export function encodeWav(
+  pcm16: Int16Array,
+  sampleRate: number,
+  numChannels: number = 1
+): Buffer {
+  const bytesPerSample = 2;
+  const dataByteLength = pcm16.length * bytesPerSample;
+  const headerSize = 44;
+  const buffer = Buffer.alloc(headerSize + dataByteLength);
+
+  // RIFF header
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataByteLength, 4);
+  buffer.write('WAVE', 8);
+
+  // fmt sub-chunk
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16); // sub-chunk size
+  buffer.writeUInt16LE(1, 20); // PCM format
+  buffer.writeUInt16LE(numChannels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * numChannels * bytesPerSample, 28); // byte rate
+  buffer.writeUInt16LE(numChannels * bytesPerSample, 32); // block align
+  buffer.writeUInt16LE(bytesPerSample * 8, 34); // bits per sample
+
+  // data sub-chunk
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataByteLength, 40);
+
+  // PCM samples (little-endian Int16, which is how Int16Array is stored on LE systems)
+  const pcm16Bytes = Buffer.from(
+    pcm16.buffer,
+    pcm16.byteOffset,
+    pcm16.byteLength
+  );
+  pcm16Bytes.copy(buffer, headerSize);
+
+  return buffer;
+}
+
+/**
  * Convert Float32Array audio data to Int16Array (PCM16)
  */
 export function float32ToPCM16(float32Data: Float32Array): Int16Array {

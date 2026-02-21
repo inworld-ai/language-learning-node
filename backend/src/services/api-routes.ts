@@ -6,6 +6,9 @@
 
 import { Router } from 'express';
 import { AnkiExporter } from '../helpers/anki-exporter.js';
+import { generateBatchTTSAudio } from '../helpers/tts-audio-generator.js';
+import { generateBatchImages } from '../helpers/image-generator.js';
+import { Flashcard } from '../helpers/flashcard-processor.js';
 import {
   getLanguageOptions,
   DEFAULT_LANGUAGE_CODE,
@@ -18,7 +21,11 @@ export const apiRouter = Router();
 // ANKI export endpoint
 apiRouter.post('/export-anki', async (req, res) => {
   try {
-    const { flashcards, deckName, languageCode: _languageCode } = req.body;
+    const {
+      flashcards,
+      deckName,
+      languageCode,
+    } = req.body;
 
     if (!flashcards || !Array.isArray(flashcards) || flashcards.length === 0) {
       res.status(400).json({ error: 'No flashcards provided' });
@@ -33,10 +40,52 @@ apiRouter.post('/export-anki', async (req, res) => {
       return;
     }
 
+    const lang = languageCode || DEFAULT_LANGUAGE_CODE;
+    const texts: string[] = [];
+    const wordToEnglish = new Map<string, string>();
+
+    for (const fc of flashcards as Flashcard[]) {
+      const word =
+        (fc.targetWord || (fc as { spanish?: string }).spanish || '').trim();
+      if (word) {
+        texts.push(word);
+        if (fc.english) {
+          wordToEnglish.set(word, fc.english.trim());
+        }
+      }
+
+      const sentence = (fc.example || '').trim();
+      if (sentence) texts.push(sentence);
+    }
+
+    const uniqueTexts = [...new Set(texts)];
+
+    logger.info(
+      { textCount: uniqueTexts.length, imageCount: wordToEnglish.size, languageCode: lang },
+      'anki_export_generating_media'
+    );
+
+    const [audioMap, imageMap] = await Promise.all([
+      generateBatchTTSAudio(uniqueTexts, lang),
+      generateBatchImages(wordToEnglish),
+    ]);
+
+    logger.info(
+      {
+        audioCount: audioMap.size,
+        imageCount: imageMap.size,
+        requestedTexts: uniqueTexts.length,
+        requestedImages: wordToEnglish.size,
+      },
+      'anki_export_media_generation_complete'
+    );
+
     const defaultDeckName = `Inworld Language Tutor Spanish Cards`;
     const apkgBuffer = await exporter.exportFlashcards(
       flashcards,
-      deckName || defaultDeckName
+      deckName || defaultDeckName,
+      audioMap,
+      imageMap
     );
 
     res.setHeader('Content-Type', 'application/octet-stream');

@@ -109,6 +109,18 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key
 
 Find these in: Supabase Dashboard > Settings > API
 
+### Step 6 (Optional): Enable Flashcard Images with Replicate
+
+When exporting flashcards to Anki, the app can generate a unique illustrative image for each vocabulary word using [Replicate](https://replicate.com/)'s FLUX Schnell model. Without this key, flashcards are exported with audio only.
+
+Add to `backend/.env`:
+
+```bash
+REPLICATE_API_TOKEN=your_replicate_api_token
+```
+
+Get a token at [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens).
+
 ## Repo Structure
 
 ```
@@ -185,6 +197,7 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 | `SONIOX_EAGERNESS`          | No                 | Soniox endpoint detection: `low`, `medium`, `high` (default: high) |
 | `SUPABASE_URL`              | No                 | Supabase project URL (enables memory feature)                      |
 | `SUPABASE_SECRET_KEY`       | No                 | Supabase secret key (for backend memory storage)                   |
+| `REPLICATE_API_TOKEN`       | No                 | Replicate API token (enables flashcard image generation)           |
 
 ## Testing
 

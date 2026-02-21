@@ -45,7 +45,7 @@ function AppContent() {
           target="_blank"
           rel="noopener noreferrer"
           className="fab-button fab-labeled"
-          aria-label="Deploy on Render"
+          aria-label="Render"
         >
           <svg
             width="16"
@@ -61,7 +61,7 @@ function AppContent() {
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
           </svg>
-          <span>Deploy on Render</span>
+          <span>Render</span>
         </a>
         <a
           href="https://github.com/inworld-ai/language-learning-node"
