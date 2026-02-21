@@ -34,9 +34,8 @@ function AppContent() {
               </div>
             </div>
           </main>
-          {/* Hidden audio elements for TTS playback -- routed through here so browser AEC can cancel echo */}
-          <audio id="ttsAudioOutput" style={{ display: 'none' }} playsInline />
-          <audio id="ttsAudioOutputFlashcard" style={{ display: 'none' }} playsInline />
+          {/* Hidden audio element for iOS compatibility */}
+          <audio id="iosAudioElement" style={{ display: 'none' }} playsInline />
         </div>
       </div>
       {/* Floating Action Buttons */}

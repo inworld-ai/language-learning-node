@@ -289,12 +289,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const wsClientRef = useRef(wsClientInstance);
   const audioHandlerInstance = useMemo(() => new AudioHandler(), []);
   const audioHandlerRef = useRef(audioHandlerInstance);
-  const audioPlayerInstance = useMemo(() => new AudioPlayer('ttsAudioOutput'), []);
+  const audioPlayerInstance = useMemo(() => new AudioPlayer(), []);
   const audioPlayerRef = useRef(audioPlayerInstance);
-  const ttsAudioPlayerInstance = useMemo(
-    () => new AudioPlayer('ttsAudioOutputFlashcard'),
-    []
-  );
+  const ttsAudioPlayerInstance = useMemo(() => new AudioPlayer(), []);
   const ttsAudioPlayerRef = useRef(ttsAudioPlayerInstance);
   const hasMigratedRef = useRef(false);
   const conversationsLoadedRef = useRef(false);
@@ -404,6 +401,54 @@ export function AppProvider({ children }: AppProviderProps) {
     return () => {
       audioPlayer.destroy();
       ttsAudioPlayer.destroy();
+    };
+  }, []);
+
+  // Echo gate: mute mic while TTS is playing to prevent speaker output
+  // from being picked up as user speech on mobile
+  useEffect(() => {
+    const audioPlayer = audioPlayerRef.current;
+    const ttsAudioPlayer = ttsAudioPlayerRef.current;
+    const audioHandler = audioHandlerRef.current;
+
+    let mainPlaying = false;
+    let ttsPlaying = false;
+
+    const updateMuteState = () => {
+      if (mainPlaying || ttsPlaying) {
+        audioHandler.mute();
+      } else {
+        audioHandler.unmute();
+      }
+    };
+
+    const onMainStarted = () => {
+      mainPlaying = true;
+      updateMuteState();
+    };
+    const onMainDone = () => {
+      mainPlaying = false;
+      updateMuteState();
+    };
+    const onTtsStarted = () => {
+      ttsPlaying = true;
+      updateMuteState();
+    };
+    const onTtsDone = () => {
+      ttsPlaying = false;
+      updateMuteState();
+    };
+
+    audioPlayer.on('playback_started', onMainStarted);
+    audioPlayer.on('playback_finished', onMainDone);
+    audioPlayer.on('playback_stopped', onMainDone);
+
+    ttsAudioPlayer.on('playback_started', onTtsStarted);
+    ttsAudioPlayer.on('playback_finished', onTtsDone);
+    ttsAudioPlayer.on('playback_stopped', onTtsDone);
+
+    return () => {
+      audioHandler.unmute();
     };
   }, []);
 
