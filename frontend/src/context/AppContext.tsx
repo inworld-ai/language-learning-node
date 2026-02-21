@@ -289,9 +289,12 @@ export function AppProvider({ children }: AppProviderProps) {
   const wsClientRef = useRef(wsClientInstance);
   const audioHandlerInstance = useMemo(() => new AudioHandler(), []);
   const audioHandlerRef = useRef(audioHandlerInstance);
-  const audioPlayerInstance = useMemo(() => new AudioPlayer(), []);
+  const audioPlayerInstance = useMemo(() => new AudioPlayer('ttsAudioOutput'), []);
   const audioPlayerRef = useRef(audioPlayerInstance);
-  const ttsAudioPlayerInstance = useMemo(() => new AudioPlayer(), []);
+  const ttsAudioPlayerInstance = useMemo(
+    () => new AudioPlayer('ttsAudioOutputFlashcard'),
+    []
+  );
   const ttsAudioPlayerRef = useRef(ttsAudioPlayerInstance);
   const hasMigratedRef = useRef(false);
   const conversationsLoadedRef = useRef(false);

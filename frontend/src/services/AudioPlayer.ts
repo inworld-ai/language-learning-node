@@ -15,10 +15,14 @@ export class AudioPlayer {
   private nextStartTime: number = 0;
   private scheduledSources: AudioBufferSourceNode[] = [];
   private scheduleInterval: ReturnType<typeof setInterval> | null = null;
-  private readonly SCHEDULE_AHEAD_TIME = 0.1; // Look 100ms ahead
-  private readonly FADE_SAMPLES = 128; // ~2.7ms at 48kHz, ~8ms at 16kHz
+  private readonly SCHEDULE_AHEAD_TIME = 0.3; // Schedule 300ms ahead for mobile timer resilience
+  private readonly FADE_SAMPLES = 256; // ~11ms at 22050Hz TTS rate
+  private mediaStreamDest: MediaStreamAudioDestinationNode | null = null;
+  private audioElement: HTMLAudioElement | null = null;
+  private audioElementId: string;
 
-  constructor() {
+  constructor(audioElementId: string = 'ttsAudioOutput') {
+    this.audioElementId = audioElementId;
     this.isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -53,6 +57,31 @@ export class AudioPlayer {
 
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume();
+      }
+
+      // Route through <audio> element so browser AEC has a reference signal.
+      // This lets mobile Safari/Chrome cancel echo from TTS playback while
+      // keeping the mic hot for user interruption.
+      try {
+        this.mediaStreamDest =
+          this.audioContext.createMediaStreamDestination();
+        this.audioElement = document.getElementById(
+          this.audioElementId
+        ) as HTMLAudioElement | null;
+        if (this.audioElement) {
+          this.audioElement.srcObject = this.mediaStreamDest.stream;
+          this.audioElement.play().catch(() => {});
+        }
+        console.log(
+          '[AudioPlayer] AEC routing enabled via MediaStreamDestination'
+        );
+      } catch (aecError) {
+        console.warn(
+          '[AudioPlayer] MediaStreamDestination unavailable, using direct output',
+          aecError
+        );
+        this.mediaStreamDest = null;
+        this.audioElement = null;
       }
 
       console.log(
@@ -104,6 +133,11 @@ export class AudioPlayer {
     // Standard implementation
     if (!this.audioContext) {
       await this.initialize();
+    }
+
+    // Ensure <audio> element is playing (may have been blocked by autoplay policy earlier)
+    if (this.audioElement && this.audioElement.paused) {
+      this.audioElement.play().catch(() => {});
     }
 
     try {
@@ -251,7 +285,7 @@ export class AudioPlayer {
 
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(this.audioContext.destination);
+    source.connect(this.mediaStreamDest ?? this.audioContext.destination);
 
     this.scheduledSources.push(source);
 
@@ -352,6 +386,12 @@ export class AudioPlayer {
   destroy(): void {
     this.stop();
     this.stopScheduleInterval();
+
+    if (this.audioElement) {
+      this.audioElement.srcObject = null;
+      this.audioElement = null;
+    }
+    this.mediaStreamDest = null;
 
     if (this.audioContext) {
       this.audioContext.close();
