@@ -121,10 +121,7 @@ export async function generateBatchImages(
         results.set(word, image);
       }
     } catch (error) {
-      logger.warn(
-        { word, err: error },
-        'image_generation_failed_for_word'
-      );
+      logger.warn({ word, err: error }, 'image_generation_failed_for_word');
     }
     i++;
   }

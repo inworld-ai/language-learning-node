@@ -285,7 +285,12 @@ function handleMessage(
     } else if (message.type === 'tts_pronounce_request') {
       handleTTSPronounce(connectionId, ws, message);
     } else if (message.type === 'create_flashcard_request') {
-      handleCreateFlashcardRequest(connectionId, ws, connectionManager, message);
+      handleCreateFlashcardRequest(
+        connectionId,
+        ws,
+        connectionManager,
+        message
+      );
     } else {
       logger.debug(
         { connectionId, messageType: message.type },
@@ -743,10 +748,7 @@ async function handleCreateFlashcardRequest(
     content: m.content,
   }));
 
-  logger.info(
-    { connectionId, word, languageCode },
-    'create_flashcard_request'
-  );
+  logger.info({ connectionId, word, languageCode }, 'create_flashcard_request');
 
   try {
     const attrs = connectionAttributes.get(connectionId) || {};

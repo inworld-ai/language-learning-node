@@ -54,11 +54,7 @@ class SonioxSession {
   ) {}
 
   public async ensureConnection(): Promise<void> {
-    if (
-      !this.ws ||
-      !this.wsReady ||
-      this.ws.readyState !== WebSocket.OPEN
-    ) {
+    if (!this.ws || !this.wsReady || this.ws.readyState !== WebSocket.OPEN) {
       this.closeWebSocket();
       this.initializeWebSocket();
     }
@@ -265,10 +261,7 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
   private readonly TURN_COMPLETION_TIMEOUT_MS = 2000;
   private readonly MAX_TRANSCRIPTION_DURATION_MS = 40000;
 
-  constructor(props: {
-    id?: string;
-    config: SonioxSTTWebSocketNodeConfig;
-  }) {
+  constructor(props: { id?: string; config: SonioxSTTWebSocketNodeConfig }) {
     const { config, ...nodeProps } = props;
 
     if (!config.apiKey) {
@@ -361,13 +354,12 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
     let textContent: string | undefined;
 
     // Soniox token accumulation
-    let finalTokenTexts: string[] = [];
+    const finalTokenTexts: string[] = [];
 
     // Derive per-session language hints from the connection's active language
     const targetLang = connection.state.languageCode || 'es';
-    const sessionLanguageHints = targetLang === 'en'
-      ? ['en']
-      : ['en', targetLang];
+    const sessionLanguageHints =
+      targetLang === 'en' ? ['en'] : ['en', targetLang];
 
     // Get or create session
     let session = this.sessions.get(sessionId);
@@ -440,8 +432,12 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
         }
 
         // Trigger speech detected on first meaningful text
-        if (!speechDetected && (nonFinalTexts.length > 0 || finalTokenTexts.length > 0)) {
-          const hasText = nonFinalTexts.some((t) => t.trim().length > 0) ||
+        if (
+          !speechDetected &&
+          (nonFinalTexts.length > 0 || finalTokenTexts.length > 0)
+        ) {
+          const hasText =
+            nonFinalTexts.some((t) => t.trim().length > 0) ||
             finalTokenTexts.some((t) => t.trim().length > 0);
           if (hasText) {
             speechDetected = true;
@@ -454,7 +450,9 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
 
         // Send partial transcript from non-final tokens
         if (nonFinalTexts.length > 0) {
-          const partialText = [...finalTokenTexts, ...nonFinalTexts].join('').trim();
+          const partialText = [...finalTokenTexts, ...nonFinalTexts]
+            .join('')
+            .trim();
           if (partialText) {
             this.sendPartialTranscript(
               sessionId,
@@ -481,7 +479,10 @@ export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
             connection.pendingTranscript = undefined;
           } else {
             logger.debug(
-              { iteration, transcriptSnippet: finalTranscript.substring(0, 50) },
+              {
+                iteration,
+                transcriptSnippet: finalTranscript.substring(0, 50),
+              },
               'endpoint_detected'
             );
           }

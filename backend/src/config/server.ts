@@ -118,8 +118,7 @@ export const serverConfig = {
    */
   soniox: {
     /** Endpoint detection eagerness level (reuses the same 'low'|'medium'|'high' scale) */
-    eagerness: (process.env.SONIOX_EAGERNESS ||
-      'high') as AssemblyAIEagerness,
+    eagerness: (process.env.SONIOX_EAGERNESS || 'high') as AssemblyAIEagerness,
   },
 
   /**
@@ -162,6 +161,7 @@ export function getSttProvider(): STTProvider {
  * Reads SONIOX_EAGERNESS from process.env at call time (after dotenv loads).
  */
 export function getSonioxSettings(): SonioxEndpointSettings {
-  const eagerness = (process.env.SONIOX_EAGERNESS || 'high') as AssemblyAIEagerness;
+  const eagerness = (process.env.SONIOX_EAGERNESS ||
+    'high') as AssemblyAIEagerness;
   return sonioxPresets[eagerness];
 }

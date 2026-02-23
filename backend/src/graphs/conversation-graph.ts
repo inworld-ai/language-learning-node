@@ -63,10 +63,7 @@ export class ConversationGraphWrapper {
   graph: Graph;
   sttNode: STTNode;
 
-  private constructor(params: {
-    graph: Graph;
-    sttNode: STTNode;
-  }) {
+  private constructor(params: { graph: Graph; sttNode: STTNode }) {
     this.graph = params.graph;
     this.sttNode = params.sttNode;
   }

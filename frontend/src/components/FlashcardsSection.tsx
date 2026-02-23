@@ -148,9 +148,7 @@ export function FlashcardsSection() {
                   isPronouncing={pronouncingCardId === cardId}
                   isPronouncingSentence={
                     pronouncingCardId ===
-                    (flashcard.example ||
-                      flashcard.example_sentence ||
-                      '')
+                    (flashcard.example || flashcard.example_sentence || '')
                   }
                 />
               );
@@ -165,7 +163,8 @@ export function FlashcardsSection() {
             <div className="export-modal-spinner" />
             <div className="export-modal-text">Exporting flashcards</div>
             <div className="export-modal-subtext">
-              Generating audio &amp; images for {cardCount} card{cardCount !== 1 ? 's' : ''}...
+              Generating audio &amp; images for {cardCount} card
+              {cardCount !== 1 ? 's' : ''}...
             </div>
           </div>
         </div>

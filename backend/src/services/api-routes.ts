@@ -21,11 +21,7 @@ export const apiRouter = Router();
 // ANKI export endpoint
 apiRouter.post('/export-anki', async (req, res) => {
   try {
-    const {
-      flashcards,
-      deckName,
-      languageCode,
-    } = req.body;
+    const { flashcards, deckName, languageCode } = req.body;
 
     if (!flashcards || !Array.isArray(flashcards) || flashcards.length === 0) {
       res.status(400).json({ error: 'No flashcards provided' });
@@ -45,8 +41,11 @@ apiRouter.post('/export-anki', async (req, res) => {
     const wordToEnglish = new Map<string, string>();
 
     for (const fc of flashcards as Flashcard[]) {
-      const word =
-        (fc.targetWord || (fc as { spanish?: string }).spanish || '').trim();
+      const word = (
+        fc.targetWord ||
+        (fc as { spanish?: string }).spanish ||
+        ''
+      ).trim();
       if (word) {
         texts.push(word);
         if (fc.english) {
@@ -61,7 +60,11 @@ apiRouter.post('/export-anki', async (req, res) => {
     const uniqueTexts = [...new Set(texts)];
 
     logger.info(
-      { textCount: uniqueTexts.length, imageCount: wordToEnglish.size, languageCode: lang },
+      {
+        textCount: uniqueTexts.length,
+        imageCount: wordToEnglish.size,
+        languageCode: lang,
+      },
       'anki_export_generating_media'
     );
 

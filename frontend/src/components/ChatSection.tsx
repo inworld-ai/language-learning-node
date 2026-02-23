@@ -110,17 +110,14 @@ export function ChatSection() {
     [textInput, sendTextMessage]
   );
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      const selection = window.getSelection();
-      const selectedText = selection?.toString().trim();
-      if (!selectedText) return;
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim();
+    if (!selectedText) return;
 
-      e.preventDefault();
-      setContextMenu({ x: e.clientX, y: e.clientY, word: selectedText });
-    },
-    []
-  );
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, word: selectedText });
+  }, []);
 
   const handleCreateFlashcard = useCallback(() => {
     if (contextMenu?.word) {
@@ -271,14 +268,21 @@ export function ChatSection() {
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={handleCreateFlashcard}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <rect x="2" y="3" width="20" height="18" rx="2" />
             <line x1="12" y1="8" x2="12" y2="16" />
             <line x1="8" y1="12" x2="16" y2="12" />
           </svg>
-          Create flashcard for &ldquo;{contextMenu.word.length > 30
+          Create flashcard for &ldquo;
+          {contextMenu.word.length > 30
             ? contextMenu.word.slice(0, 30) + '…'
-            : contextMenu.word}&rdquo;
+            : contextMenu.word}
+          &rdquo;
         </div>
       )}
     </section>

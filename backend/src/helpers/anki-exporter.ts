@@ -45,7 +45,11 @@ export class AnkiExporter {
         return;
       }
 
-      const front = this.formatCardFront(flashcard, targetWord.trim(), audioMap);
+      const front = this.formatCardFront(
+        flashcard,
+        targetWord.trim(),
+        audioMap
+      );
       const back = this.formatCardBack(flashcard, audioMap, imageMap);
 
       const tags = ['inworld-language-tutor'];

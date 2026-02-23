@@ -58,10 +58,7 @@ class FlashcardParserNode extends CustomNode {
       } catch {
         try {
           parsed = JSON.parse(jsonrepair(raw));
-          logger.warn(
-            { raw: raw.slice(0, 500) },
-            'flashcard_json_repaired'
-          );
+          logger.warn({ raw: raw.slice(0, 500) }, 'flashcard_json_repaired');
         } catch (repairError) {
           logger.error(
             { raw: raw.slice(0, 500), err: repairError },
@@ -79,7 +76,8 @@ class FlashcardParserNode extends CustomNode {
           mnemonic: parsed.mnemonic ?? '',
           timestamp: new Date().toISOString(),
         };
-        if (parsed.exampleTranslation) result.exampleTranslation = parsed.exampleTranslation;
+        if (parsed.exampleTranslation)
+          result.exampleTranslation = parsed.exampleTranslation;
         if (parsed.pinyin) result.pinyin = parsed.pinyin;
         if (parsed.examplePinyin) result.examplePinyin = parsed.examplePinyin;
         return result;

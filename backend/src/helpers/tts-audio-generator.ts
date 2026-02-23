@@ -99,7 +99,10 @@ export async function generateBatchTTSAudio(
         const sanitized = word
           .trim()
           .toLowerCase()
-          .replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF\u3000-\u9FFF\uAC00-\uD7AF]/g, '_')
+          .replace(
+            /[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF\u3000-\u9FFF\uAC00-\uD7AF]/g,
+            '_'
+          )
           .replace(/_+/g, '_')
           .replace(/^_|_$/g, '');
         const filename = `tts_${sanitized}_${i}.wav`;

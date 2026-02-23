@@ -293,7 +293,9 @@ export class AudioHandler {
   mute(): void {
     if (!this.isMuted) {
       this.isMuted = true;
-      console.log('[AudioHandler] Muted — suppressing audio chunks during TTS playback');
+      console.log(
+        '[AudioHandler] Muted — suppressing audio chunks during TTS playback'
+      );
     }
   }
 
