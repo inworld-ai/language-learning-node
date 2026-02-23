@@ -91,12 +91,17 @@ export class FlashcardProcessor {
     try {
       const flashcards = await Promise.all(promises);
 
-      // Filter out any failed generations and duplicates
       const validFlashcards = flashcards.filter(
         (card) => card.targetWord && card.english
       );
 
-      // Add to existing flashcards to track for future duplicates
+      if (validFlashcards.length === 0 && flashcards.length > 0) {
+        logger.warn(
+          { generated: flashcards.length },
+          'all_flashcards_filtered_out'
+        );
+      }
+
       this.existingFlashcards.push(...validFlashcards);
 
       return validFlashcards;
@@ -159,6 +164,10 @@ export class FlashcardProcessor {
       );
 
       if (isDuplicate) {
+        logger.info(
+          { word: flashcard.targetWord },
+          'flashcard_duplicate_skipped'
+        );
         return {
           id: v4(),
           targetWord: '',

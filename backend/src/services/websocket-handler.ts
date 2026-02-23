@@ -112,6 +112,11 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
                 conversationId: conversationId || null,
               })
             );
+          } else {
+            logger.info(
+              { connectionId, languageCode },
+              'flashcard_generation_returned_empty'
+            );
           }
         } catch (error) {
           if (!isShuttingDown()) {
