@@ -19,6 +19,7 @@ import { getResponseFeedbackGraph } from '../graphs/response-feedback-graph.js';
 import { initializeTTSGraphs } from '../graphs/simple-tts-graph.js';
 import { serverLogger as logger } from '../utils/logger.js';
 import { connections } from './state.js';
+import { getSttProvider } from '../config/server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,16 +32,25 @@ export function getGraphWrapper(): ConversationGraphWrapper | null {
 }
 
 export async function initializeGraph(): Promise<void> {
-  const assemblyAIApiKey = process.env.ASSEMBLY_AI_API_KEY;
-  if (!assemblyAIApiKey) {
-    throw new Error('ASSEMBLY_AI_API_KEY environment variable is required');
+  const sonioxKey = process.env.SONIOX_API_KEY;
+  const assemblyKey = process.env.ASSEMBLY_AI_API_KEY;
+
+  if (!sonioxKey && !assemblyKey) {
+    throw new Error(
+      'No speech-to-text API key configured. ' +
+        'Set either SONIOX_API_KEY or ASSEMBLY_AI_API_KEY in your backend/.env file.'
+    );
   }
 
-  logger.info('initializing_conversation_graph');
+  const sttProvider = getSttProvider();
+  const sttApiKey = sttProvider === 'soniox' ? sonioxKey! : assemblyKey!;
+
+  logger.info({ sttProvider }, 'initializing_conversation_graph');
   graphWrapper = getConversationGraph({
-    assemblyAIApiKey,
+    sttProvider,
+    sttApiKey,
     connections,
-    defaultLanguageCode: 'es', // Always Spanish
+    defaultLanguageCode: 'es',
   });
   logger.info('conversation_graph_initialized');
 

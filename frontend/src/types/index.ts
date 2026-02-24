@@ -53,7 +53,10 @@ export interface Flashcard {
   targetWord: string;
   english: string;
   example: string;
+  exampleTranslation?: string;
   mnemonic: string;
+  pinyin?: string;
+  examplePinyin?: string;
   timestamp?: string;
   languageCode?: string;
   conversationId?: string;

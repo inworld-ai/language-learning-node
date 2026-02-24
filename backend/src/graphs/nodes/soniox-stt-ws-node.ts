@@ -8,69 +8,53 @@ import { audioDataToPCM16 } from '../../helpers/audio-utils.js';
 import { createLogger } from '../../utils/logger.js';
 import { STTNode } from './stt-node.js';
 
-const logger = createLogger('AssemblyAI');
+const logger = createLogger('Soniox');
+
+const SONIOX_WEBSOCKET_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
+const SONIOX_MODEL = 'stt-rt-v4';
 
 /**
- * Configuration interface for AssemblyAISTTWebSocketNode
+ * Configuration interface for SonioxSTTWebSocketNode
  */
-export interface AssemblyAISTTWebSocketNodeConfig {
-  /** Assembly.AI API key */
+export interface SonioxSTTWebSocketNodeConfig {
+  /** Soniox API key */
   apiKey: string;
   /** Connections map to access session state */
   connections: { [sessionId: string]: Connection };
   /** Sample rate of the audio stream in Hz */
   sampleRate?: number;
-  /** Enable turn formatting from Assembly.AI */
-  formatTurns?: boolean;
-  /** End of turn confidence threshold (0-1) */
-  endOfTurnConfidenceThreshold?: number;
-  /** Minimum silence duration when confident (in milliseconds) */
-  minEndOfTurnSilenceWhenConfident?: number;
-  /** Maximum turn silence (in milliseconds) */
-  maxTurnSilence?: number;
+  /** Maximum endpoint delay in milliseconds (500-3000, default 2000) */
+  maxEndpointDelayMs?: number;
+  /** Language hints for improved accuracy (e.g. ['en', 'es']) */
+  languageHints?: string[];
 }
 
 /**
- * Manages a persistent WebSocket connection to Assembly.AI for a single session.
+ * Manages a persistent WebSocket connection to Soniox for a single session.
  */
-class AssemblyAISession {
+class SonioxSession {
   private ws: WebSocket | null = null;
   private wsReady: boolean = false;
   private wsConnectionPromise: Promise<void> | null = null;
 
-  public assemblySessionId: string = '';
-  public sessionExpiresAt: number = 0;
   public shouldStopProcessing: boolean = false;
 
   private inactivityTimeout: NodeJS.Timeout | null = null;
+  private keepaliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
-  private readonly INACTIVITY_TIMEOUT_MS = 60000; // 60 seconds
+  private readonly INACTIVITY_TIMEOUT_MS = 60000;
+  private readonly KEEPALIVE_INTERVAL_MS = 5000;
 
   constructor(
     public readonly sessionId: string,
     private apiKey: string,
-    private url: string
+    private sampleRate: number,
+    private maxEndpointDelayMs: number,
+    private languageHints: string[]
   ) {}
 
-  /**
-   * Ensure WebSocket connection is ready, reconnecting if needed
-   */
   public async ensureConnection(): Promise<void> {
-    const now = Math.floor(Date.now() / 1000);
-    const isExpired = this.sessionExpiresAt > 0 && now >= this.sessionExpiresAt;
-
-    if (
-      !this.ws ||
-      !this.wsReady ||
-      this.ws.readyState !== WebSocket.OPEN ||
-      isExpired
-    ) {
-      if (isExpired) {
-        logger.info(
-          { sessionId: this.sessionId },
-          'session_expired_reconnecting'
-        );
-      }
+    if (!this.ws || !this.wsReady || this.ws.readyState !== WebSocket.OPEN) {
       this.closeWebSocket();
       this.initializeWebSocket();
     }
@@ -87,31 +71,37 @@ class AssemblyAISession {
     logger.debug({ sessionId: this.sessionId }, 'initializing_websocket');
 
     this.wsConnectionPromise = new Promise<void>((resolve, reject) => {
-      this.ws = new WebSocket(this.url, {
-        headers: { Authorization: this.apiKey },
-      });
+      this.ws = new WebSocket(SONIOX_WEBSOCKET_URL);
 
       this.ws.on('open', () => {
         logger.debug({ sessionId: this.sessionId }, 'websocket_opened');
-        this.wsReady = true;
-        resolve();
-      });
 
-      // Permanent message handler for session metadata
-      this.ws.on('message', (data: WebSocket.Data) => {
-        try {
-          const message = JSON.parse(data.toString());
-          if (message.type === 'Begin') {
-            this.assemblySessionId = message.id || message.session_id || '';
-            this.sessionExpiresAt = message.expires_at || 0;
-            logger.debug(
-              { assemblySessionId: this.assemblySessionId },
-              'session_began'
-            );
-          }
-        } catch {
-          // Ignore parsing errors
-        }
+        const config = {
+          api_key: this.apiKey,
+          model: SONIOX_MODEL,
+          audio_format: 'pcm_s16le',
+          sample_rate: this.sampleRate,
+          num_channels: 1,
+          enable_endpoint_detection: true,
+          max_endpoint_delay_ms: this.maxEndpointDelayMs,
+          language_hints: this.languageHints,
+          enable_language_identification: true,
+        };
+
+        this.ws!.send(JSON.stringify(config));
+        logger.debug(
+          {
+            model: SONIOX_MODEL,
+            sampleRate: this.sampleRate,
+            maxEndpointDelayMs: this.maxEndpointDelayMs,
+            languageHints: this.languageHints,
+          },
+          'config_sent'
+        );
+
+        this.wsReady = true;
+        this.startKeepalive();
+        resolve();
       });
 
       this.ws.on('error', (error: Error) => {
@@ -123,6 +113,7 @@ class AssemblyAISession {
       this.ws.on('close', (code: number, reason: Buffer) => {
         logger.debug({ code, reason: reason.toString() }, 'websocket_closed');
         this.wsReady = false;
+        this.stopKeepalive();
       });
     });
   }
@@ -146,6 +137,28 @@ class AssemblyAISession {
     }
   }
 
+  public sendFinalize(): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'finalize' }));
+    }
+  }
+
+  private startKeepalive(): void {
+    this.stopKeepalive();
+    this.keepaliveInterval = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'keepalive' }));
+      }
+    }, this.KEEPALIVE_INTERVAL_MS);
+  }
+
+  private stopKeepalive(): void {
+    if (this.keepaliveInterval) {
+      clearInterval(this.keepaliveInterval);
+      this.keepaliveInterval = null;
+    }
+  }
+
   private resetInactivityTimer(): void {
     if (this.inactivityTimeout) {
       clearTimeout(this.inactivityTimeout);
@@ -156,15 +169,28 @@ class AssemblyAISession {
     }, this.INACTIVITY_TIMEOUT_MS);
   }
 
-  /**
-   * Clear the inactivity timer without closing the connection.
-   * Used when we know no audio will be coming (e.g., text-only interactions).
-   */
   public clearInactivityTimer(): void {
     if (this.inactivityTimeout) {
       clearTimeout(this.inactivityTimeout);
       this.inactivityTimeout = null;
     }
+  }
+
+  /**
+   * Update language hints. If they differ from the current hints, closes the
+   * existing WebSocket so the next ensureConnection() reopens with the new config.
+   */
+  public updateLanguageHints(hints: string[]): void {
+    const sorted = [...hints].sort();
+    const currentSorted = [...this.languageHints].sort();
+    if (sorted.join(',') === currentSorted.join(',')) return;
+
+    logger.info(
+      { sessionId: this.sessionId, from: this.languageHints, to: hints },
+      'language_hints_changed'
+    );
+    this.languageHints = hints;
+    this.closeWebSocket();
   }
 
   private closeDueToInactivity(): void {
@@ -173,19 +199,17 @@ class AssemblyAISession {
       { sessionId: this.sessionId, inactiveMs: inactiveFor },
       'closing_due_to_inactivity'
     );
-    // Only close the WebSocket to stop billing, but keep the session reusable.
-    // Don't set shouldStopProcessing - this allows the graph to continue waiting
-    // for input and reconnect when audio arrives.
     this.closeWebSocket();
-    // Note: We intentionally do NOT call onCleanup here anymore.
-    // The session stays in the map and can be reactivated by ensureConnection().
   }
 
   private closeWebSocket(): void {
+    this.stopKeepalive();
     if (this.ws) {
       try {
         this.ws.removeAllListeners();
         if (this.ws.readyState === WebSocket.OPEN) {
+          // Send empty string to signal end-of-audio
+          this.ws.send('');
           this.ws.close();
         }
       } catch (e) {
@@ -203,7 +227,8 @@ class AssemblyAISession {
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       try {
-        this.ws.send(JSON.stringify({ type: 'Terminate' }));
+        // Signal end-of-audio
+        this.ws.send('');
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch {
         // Ignore
@@ -215,100 +240,54 @@ class AssemblyAISession {
 }
 
 /**
- * AssemblyAISTTWebSocketNode processes continuous multimodal streams using Assembly.AI's
+ * SonioxSTTWebSocketNode processes continuous multimodal streams using Soniox's
  * streaming Speech-to-Text service via direct WebSocket connection.
  *
  * This node:
  * - Receives MultimodalContent stream (audio and/or text)
- * - For audio: extracts audio and feeds to Assembly.AI streaming transcriber
+ * - For audio: extracts audio and feeds to Soniox streaming transcriber
  * - For text: bypasses STT and returns text directly
- * - Detects turn endings using Assembly.AI's neural turn detection
+ * - Detects turn endings using Soniox's semantic endpoint detection
  * - Returns DataStreamWithMetadata with transcribed text when a turn completes
  */
-export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
+export class SonioxSTTWebSocketNode extends CustomNode implements STTNode {
   private apiKey: string;
   private connections: { [sessionId: string]: Connection };
   private sampleRate: number;
-  private formatTurns: boolean;
-  private endOfTurnConfidenceThreshold: number;
-  private minEndOfTurnSilenceWhenConfident: number;
-  private maxTurnSilence: number;
-  private wsEndpointBaseUrl: string = 'wss://streaming.assemblyai.com/v3/ws';
+  private maxEndpointDelayMs: number;
+  private languageHints: string[];
 
-  private sessions: Map<string, AssemblyAISession> = new Map();
+  private sessions: Map<string, SonioxSession> = new Map();
   private readonly TURN_COMPLETION_TIMEOUT_MS = 2000;
   private readonly MAX_TRANSCRIPTION_DURATION_MS = 40000;
 
-  constructor(props: {
-    id?: string;
-    config: AssemblyAISTTWebSocketNodeConfig;
-  }) {
+  constructor(props: { id?: string; config: SonioxSTTWebSocketNodeConfig }) {
     const { config, ...nodeProps } = props;
 
     if (!config.apiKey) {
-      throw new Error('AssemblyAISTTWebSocketNode requires an API key.');
+      throw new Error('SonioxSTTWebSocketNode requires an API key.');
     }
     if (!config.connections) {
-      throw new Error(
-        'AssemblyAISTTWebSocketNode requires a connections object.'
-      );
+      throw new Error('SonioxSTTWebSocketNode requires a connections object.');
     }
 
-    super({ id: nodeProps.id || 'assembly-ai-stt-ws-node' });
+    super({ id: nodeProps.id || 'soniox-stt-ws-node' });
 
     this.apiKey = config.apiKey;
     this.connections = config.connections;
     this.sampleRate = config.sampleRate || 16000;
-    this.formatTurns = config.formatTurns ?? false;
-    this.endOfTurnConfidenceThreshold =
-      config.endOfTurnConfidenceThreshold ?? 0.7;
-    this.minEndOfTurnSilenceWhenConfident =
-      config.minEndOfTurnSilenceWhenConfident ?? 800;
-    this.maxTurnSilence = config.maxTurnSilence ?? 3600;
+    this.maxEndpointDelayMs = config.maxEndpointDelayMs ?? 2000;
+    this.languageHints = config.languageHints ?? ['en'];
 
     logger.info(
       {
-        threshold: this.endOfTurnConfidenceThreshold,
-        minSilenceMs: this.minEndOfTurnSilenceWhenConfident,
-        maxSilenceMs: this.maxTurnSilence,
+        maxEndpointDelayMs: this.maxEndpointDelayMs,
+        languageHints: this.languageHints,
       },
       'stt_node_configured'
     );
   }
 
-  /**
-   * Build WebSocket URL with query parameters
-   */
-  private buildWebSocketUrl(): string {
-    const params = new URLSearchParams({
-      sample_rate: this.sampleRate.toString(),
-      encoding: 'pcm_s16le',
-      format_turns: this.formatTurns.toString(),
-      end_of_turn_confidence_threshold:
-        this.endOfTurnConfidenceThreshold.toString(),
-      min_end_of_turn_silence_when_confident:
-        this.minEndOfTurnSilenceWhenConfident.toString(),
-      max_turn_silence: this.maxTurnSilence.toString(),
-      speech_model: 'universal-streaming-multilingual',
-      language_detection: 'true',
-    });
-
-    const url = `${this.wsEndpointBaseUrl}?${params.toString()}`;
-    logger.debug(
-      {
-        model: 'universal-streaming-multilingual',
-        threshold: this.endOfTurnConfidenceThreshold,
-        maxSilenceMs: this.maxTurnSilence,
-      },
-      'connecting_to_assemblyai'
-    );
-
-    return url;
-  }
-
-  /**
-   * Process multimodal stream and transcribe using Assembly.AI WebSocket
-   */
   async process(
     context: ProcessContext,
     input0: AsyncIterableIterator<GraphTypes.MultimodalContent>,
@@ -331,7 +310,6 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
       throw Error(`Failed to read connection for sessionId: ${sessionId}`);
     }
 
-    // Get iteration from metadata or parse from interactionId
     const metadata = input?.getMetadata?.() || {};
     let previousIteration = (metadata.iteration as number) || 0;
 
@@ -375,15 +353,27 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
     let isTextInput = false;
     let textContent: string | undefined;
 
+    // Soniox token accumulation
+    const finalTokenTexts: string[] = [];
+
+    // Derive per-session language hints from the connection's active language
+    const targetLang = connection.state.languageCode || 'es';
+    const sessionLanguageHints =
+      targetLang === 'en' ? ['en'] : ['en', targetLang];
+
     // Get or create session
     let session = this.sessions.get(sessionId);
     if (!session) {
-      session = new AssemblyAISession(
+      session = new SonioxSession(
         sessionId,
         this.apiKey,
-        this.buildWebSocketUrl()
+        this.sampleRate,
+        this.maxEndpointDelayMs,
+        sessionLanguageHints
       );
       this.sessions.set(sessionId, session);
+    } else {
+      session.updateLanguageHints(sessionLanguageHints);
     }
 
     // Promise to capture turn result
@@ -399,49 +389,86 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
       return value;
     });
 
-    // AssemblyAI message handler for this process() call
+    // Soniox message handler for this process() call
     const messageHandler = (data: WebSocket.Data) => {
       try {
         const message = JSON.parse(data.toString());
-        const msgType = message.type;
 
-        if (msgType === 'Turn') {
-          if (session?.shouldStopProcessing) {
-            return;
-          }
+        if (message.error_code) {
+          logger.error(
+            { code: message.error_code, msg: message.error_message },
+            'soniox_error'
+          );
+          errorOccurred = true;
+          errorMessage = `${message.error_code}: ${message.error_message}`;
+          return;
+        }
 
-          const transcript = message.transcript || '';
-          const utterance = message.utterance || '';
-          const isFinal = message.end_of_turn;
+        if (session?.shouldStopProcessing) {
+          return;
+        }
 
-          if (!transcript) return;
+        const tokens = message.tokens;
+        if (!tokens || !Array.isArray(tokens) || tokens.length === 0) {
+          return;
+        }
 
-          if (!isFinal) {
-            // Partial transcript
-            const textToSend = utterance || transcript;
-            if (textToSend) {
-              this.sendPartialTranscript(
-                sessionId,
-                nextInteractionId,
-                textToSend
-              );
+        let endpointDetected = false;
+        const nonFinalTexts: string[] = [];
 
-              if (connection?.onSpeechDetected && !speechDetected) {
-                logger.debug({ iteration }, 'speech_detected');
-                speechDetected = true;
-                connection.onSpeechDetected(nextInteractionId);
-              }
+        for (const token of tokens) {
+          const text = token.text || '';
+
+          if (token.is_final) {
+            // <end> token signals endpoint detection
+            if (text === '<end>') {
+              endpointDetected = true;
+            } else {
+              finalTokenTexts.push(text);
             }
-            return;
+          } else {
+            nonFinalTexts.push(text);
           }
+        }
 
-          // Final transcript - check for pending transcript to stitch
-          let finalTranscript = transcript;
+        // Trigger speech detected on first meaningful text
+        if (
+          !speechDetected &&
+          (nonFinalTexts.length > 0 || finalTokenTexts.length > 0)
+        ) {
+          const hasText =
+            nonFinalTexts.some((t) => t.trim().length > 0) ||
+            finalTokenTexts.some((t) => t.trim().length > 0);
+          if (hasText) {
+            speechDetected = true;
+            logger.debug({ iteration }, 'speech_detected');
+            if (connection?.onSpeechDetected) {
+              connection.onSpeechDetected(nextInteractionId);
+            }
+          }
+        }
 
+        // Send partial transcript from non-final tokens
+        if (nonFinalTexts.length > 0) {
+          const partialText = [...finalTokenTexts, ...nonFinalTexts]
+            .join('')
+            .trim();
+          if (partialText) {
+            this.sendPartialTranscript(
+              sessionId,
+              nextInteractionId,
+              partialText
+            );
+          }
+        }
+
+        if (endpointDetected) {
+          let finalTranscript = finalTokenTexts.join('').trim();
+
+          // Check for pending transcript to stitch
           if (connection?.pendingTranscript) {
-            // Stitch the pending transcript with the new one
             finalTranscript =
-              `${connection.pendingTranscript} ${transcript}`.trim();
+              `${connection.pendingTranscript} ${finalTranscript}`.trim();
             logger.debug(
               {
                 iteration,
@@ -449,16 +476,17 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
               },
               'stitched_transcript'
             );
-            // Clear the pending transcript
             connection.pendingTranscript = undefined;
           } else {
             logger.debug(
-              { iteration, transcriptSnippet: transcript.substring(0, 50) },
-              'turn_detected'
+              {
+                iteration,
+                transcriptSnippet: finalTranscript.substring(0, 50),
+              },
+              'endpoint_detected'
             );
           }
 
-          // Clear interrupt flag for new processing
           if (connection) {
             connection.isProcessingInterrupted = false;
           }
@@ -467,8 +495,6 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
           turnDetected = true;
           if (session) session.shouldStopProcessing = true;
           turnResolve(finalTranscript);
-        } else if (msgType === 'Termination') {
-          logger.debug({ iteration }, 'session_terminated');
         }
       } catch (error) {
         logger.error({ err: error }, 'error_handling_message');
@@ -479,11 +505,9 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
       await session.ensureConnection();
       session.onMessage(messageHandler);
 
-      // Process multimodal content (audio chunks)
       const audioProcessingPromise = (async () => {
         let maxDurationTimeout: NodeJS.Timeout | null = null;
         try {
-          // Safety timer: prevent infinite loops
           maxDurationTimeout = setTimeout(() => {
             maxDurationReached = true;
           }, this.MAX_TRANSCRIPTION_DURATION_MS);
@@ -526,8 +550,6 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
               turnDetected = true;
               if (session) {
                 session.shouldStopProcessing = true;
-                // Clear inactivity timer since we're handling text, not audio
-                // This prevents the 60s timeout from firing and disrupting the session
                 session.clearInactivityTimer();
               }
               turnResolve(transcriptText);
@@ -573,17 +595,8 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
           'audio_ended_before_turn_waiting'
         );
 
-        // Send silence to keep connection alive - AssemblyAI needs continuous audio
-        const silenceIntervalMs = 100;
-        const silenceSamples = Math.floor(
-          (silenceIntervalMs / 1000) * this.sampleRate
-        );
-        const silenceFrame = new Int16Array(silenceSamples);
-        const silenceTimer = setInterval(() => {
-          if (session && !session.shouldStopProcessing) {
-            session.sendAudio(silenceFrame);
-          }
-        }, silenceIntervalMs);
+        // Send finalize to force Soniox to return any remaining tokens
+        session.sendFinalize();
 
         const timeoutPromise = new Promise<{ winner: 'timeout' }>((resolve) =>
           setTimeout(
@@ -596,8 +609,6 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
           turnPromiseWithState.then(() => ({ winner: 'turn' as const })),
           timeoutPromise,
         ]);
-
-        clearInterval(silenceTimer);
 
         if (waitResult.winner === 'timeout' && !turnCompleted) {
           logger.warn('timed_out_waiting_for_turn');
@@ -627,7 +638,6 @@ export class AssemblyAISTTWebSocketNode extends CustomNode implements STTNode {
         iteration: iteration,
         interactionId: nextInteractionId,
         session_id: sessionId,
-        assembly_session_id: session.assemblySessionId,
         transcript: transcriptText,
         turn_detected: turnDetected,
         audio_chunk_count: audioChunkCount,

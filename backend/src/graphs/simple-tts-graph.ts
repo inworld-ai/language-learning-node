@@ -22,7 +22,7 @@ import {
   getLanguageConfig,
   getSupportedLanguageCodes,
 } from '../config/languages.js';
-import { serverConfig } from '../config/server.js';
+import { serverConfig, getSttProvider } from '../config/server.js';
 import { graphLogger as logger } from '../utils/logger.js';
 
 export interface SimpleTTSInput {
@@ -93,7 +93,7 @@ const simpleTTSGraphs = new Map<string, Graph>();
  * Initialize TTS graphs for all supported languages
  */
 export function initializeTTSGraphs(): void {
-  const languageCodes = getSupportedLanguageCodes();
+  const languageCodes = getSupportedLanguageCodes(getSttProvider());
 
   logger.info(
     { languageCount: languageCodes.length },

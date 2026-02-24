@@ -5,7 +5,9 @@ interface FlashcardProps {
   flashcard: FlashcardType;
   onCardClick?: (flashcard: FlashcardType) => void;
   onPronounce?: (flashcard: FlashcardType) => void;
+  onPronounceText?: (text: string) => void;
   isPronouncing?: boolean;
+  isPronouncingSentence?: boolean;
 }
 
 function capitalizeFirstLetter(text: string): string {
@@ -17,7 +19,9 @@ export function Flashcard({
   flashcard,
   onCardClick,
   onPronounce,
+  onPronounceText,
   isPronouncing = false,
+  isPronouncingSentence = false,
 }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -34,12 +38,26 @@ export function Flashcard({
     [flashcard, onPronounce]
   );
 
+  const handlePronounceExample = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const text = flashcard.example || flashcard.example_sentence || '';
+      if (text && onPronounceText) {
+        onPronounceText(text);
+      }
+    },
+    [flashcard, onPronounceText]
+  );
+
   // Support both new 'targetWord' and legacy 'spanish' field
   const targetWord =
     flashcard.targetWord || flashcard.spanish || flashcard.word || '';
   const english = flashcard.english || flashcard.translation || '';
   const example = flashcard.example || flashcard.example_sentence || '';
+  const exampleTranslation = flashcard.exampleTranslation || '';
   const mnemonic = flashcard.mnemonic || '';
+  const pinyin = flashcard.pinyin || '';
+  const examplePinyin = flashcard.examplePinyin || '';
 
   // Capitalize the first letter of the target word for display
   const displayTargetWord = capitalizeFirstLetter(targetWord);
@@ -52,6 +70,7 @@ export function Flashcard({
       <div className="flashcard-inner">
         <div className="flashcard-front">
           <div className="flashcard-target-word">{displayTargetWord}</div>
+          {pinyin && <div className="flashcard-pinyin">{pinyin}</div>}
           <button
             className={`pronounce-button ${isPronouncing ? 'loading' : ''}`}
             onClick={handlePronounce}
@@ -78,7 +97,33 @@ export function Flashcard({
         </div>
         <div className="flashcard-back">
           <div className="flashcard-english">{english}</div>
-          <div className="flashcard-example">{example}</div>
+          <div
+            className={`flashcard-example ${onPronounceText ? 'pronounceable' : ''} ${isPronouncingSentence ? 'pronouncing' : ''}`}
+            onClick={onPronounceText ? handlePronounceExample : undefined}
+            role={onPronounceText ? 'button' : undefined}
+            aria-label={
+              onPronounceText ? 'Pronounce example sentence' : undefined
+            }
+          >
+            <span>{example}</span>
+            {onPronounceText && (
+              <svg
+                className="example-speaker-icon"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
+              </svg>
+            )}
+          </div>
+          {examplePinyin && (
+            <div className="flashcard-example-pinyin">{examplePinyin}</div>
+          )}
+          {exampleTranslation && (
+            <div className="flashcard-example-translation">
+              {exampleTranslation}
+            </div>
+          )}
           {mnemonic && (
             <div className="flashcard-mnemonic">
               <span className="mnemonic-label">Remember:</span>{' '}

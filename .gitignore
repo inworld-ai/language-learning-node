@@ -140,6 +140,7 @@ vite.config.ts.timestamp-*
 
 # Project specific
 backend/audio/
+backend/src/graphs/configs/
 .DS_Store
 CLAUDE.md
 templates/

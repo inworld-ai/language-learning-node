@@ -9,6 +9,7 @@ export class AudioHandler {
   private stream: MediaStream | null = null;
   private microphone: MediaStreamAudioSourceNode | null = null;
   private isStreaming = false;
+  private isMuted = false;
   private listeners = new Map<string, EventCallback[]>();
   private isIOS: boolean;
   private iosHandler: IOSAudioHandler | null;
@@ -81,7 +82,7 @@ export class AudioHandler {
         await this.iosHandler.unlockAudioContext?.();
 
         const success = await this.iosHandler.startMicrophone?.((audioData) => {
-          if (this.isStreaming) {
+          if (this.isStreaming && !this.isMuted) {
             this.emit('audioChunk', audioData);
           }
         });
@@ -154,7 +155,7 @@ export class AudioHandler {
       );
 
       this.workletNode.port.onmessage = (event: MessageEvent) => {
-        if (this.isStreaming) {
+        if (this.isStreaming && !this.isMuted) {
           const int16Buffer = event.data as ArrayBuffer;
           const base64Audio = btoa(
             String.fromCharCode(...new Uint8Array(int16Buffer))
@@ -189,7 +190,7 @@ export class AudioHandler {
     let buffer: Float32Array | null = null;
 
     this.scriptProcessor.onaudioprocess = (event: AudioProcessingEvent) => {
-      if (this.isStreaming) {
+      if (this.isStreaming && !this.isMuted) {
         const inputData = event.inputBuffer.getChannelData(0);
 
         // Append new data to the buffer
@@ -287,5 +288,25 @@ export class AudioHandler {
 
   getIsStreaming(): boolean {
     return this.isStreaming;
+  }
+
+  mute(): void {
+    if (!this.isMuted) {
+      this.isMuted = true;
+      console.log(
+        '[AudioHandler] Muted — suppressing audio chunks during TTS playback'
+      );
+    }
+  }
+
+  unmute(): void {
+    if (this.isMuted) {
+      this.isMuted = false;
+      console.log('[AudioHandler] Unmuted — resuming audio chunk emission');
+    }
+  }
+
+  getIsMuted(): boolean {
+    return this.isMuted;
   }
 }

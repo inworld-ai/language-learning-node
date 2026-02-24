@@ -261,6 +261,7 @@ interface AppContextType {
   handleInterrupt: () => void;
   sendTextMessage: (text: string) => void;
   pronounceWord: (text: string) => void;
+  createFlashcardForWord: (word: string) => void;
   // Conversation actions
   selectConversation: (conversationId: string) => void;
   createNewConversation: () => void;
@@ -403,6 +404,60 @@ export function AppProvider({ children }: AppProviderProps) {
     };
   }, []);
 
+  // Echo gate (mobile only): mute mic while TTS is playing to prevent
+  // speaker output from being picked up as user speech. Desktop browsers
+  // have reliable echo cancellation so we leave interruption enabled there.
+  useEffect(() => {
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isMobile) return;
+
+    const audioPlayer = audioPlayerRef.current;
+    const ttsAudioPlayer = ttsAudioPlayerRef.current;
+    const audioHandler = audioHandlerRef.current;
+
+    let mainPlaying = false;
+    let ttsPlaying = false;
+
+    const updateMuteState = () => {
+      if (mainPlaying || ttsPlaying) {
+        audioHandler.mute();
+      } else {
+        audioHandler.unmute();
+      }
+    };
+
+    const onMainStarted = () => {
+      mainPlaying = true;
+      updateMuteState();
+    };
+    const onMainDone = () => {
+      mainPlaying = false;
+      updateMuteState();
+    };
+    const onTtsStarted = () => {
+      ttsPlaying = true;
+      updateMuteState();
+    };
+    const onTtsDone = () => {
+      ttsPlaying = false;
+      updateMuteState();
+    };
+
+    audioPlayer.on('playback_started', onMainStarted);
+    audioPlayer.on('playback_finished', onMainDone);
+    audioPlayer.on('playback_stopped', onMainDone);
+
+    ttsAudioPlayer.on('playback_started', onTtsStarted);
+    ttsAudioPlayer.on('playback_finished', onTtsDone);
+    ttsAudioPlayer.on('playback_stopped', onTtsDone);
+
+    return () => {
+      audioHandler.unmute();
+    };
+  }, []);
+
   // Load initial state (conversations across all languages)
   // Only run if Supabase sync hasn't already loaded conversations
   useEffect(() => {
@@ -520,8 +575,6 @@ export function AppProvider({ children }: AppProviderProps) {
 
     // Case 1: We have a pending LLM response but user message was already added (text input case)
     if (pendingLLMResponse && !pendingTranscription) {
-      // Add only the teacher response
-      storage.addMessage('assistant', pendingLLMResponse);
       dispatch({
         type: 'ADD_MESSAGE',
         payload: {
@@ -531,8 +584,24 @@ export function AppProvider({ children }: AppProviderProps) {
         },
       });
 
-      const conversationHistory = storage.getConversationHistory();
-      wsClient.send({ type: 'conversation_update', data: conversationHistory });
+      // Build conversation_update from current chatHistory + new assistant message
+      const messages = [
+        ...currentState.chatHistory.map((m) => ({
+          role: m.role === 'learner' ? 'user' : 'assistant',
+          content: m.content,
+          timestamp: m.timestamp || new Date().toISOString(),
+        })),
+        {
+          role: 'assistant',
+          content: pendingLLMResponse,
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      wsClient.send({
+        type: 'conversation_update',
+        conversationId,
+        messages,
+      });
 
       pendingLLMResponseRef.current = null;
       dispatch({ type: 'RESET_STREAMING_STATE' });
@@ -562,7 +631,6 @@ export function AppProvider({ children }: AppProviderProps) {
         });
       }
 
-      storage.addMessage('user', pendingTranscription);
       dispatch({
         type: 'ADD_MESSAGE',
         payload: {
@@ -572,7 +640,6 @@ export function AppProvider({ children }: AppProviderProps) {
         },
       });
 
-      storage.addMessage('assistant', pendingLLMResponse);
       dispatch({
         type: 'ADD_MESSAGE',
         payload: {
@@ -582,8 +649,29 @@ export function AppProvider({ children }: AppProviderProps) {
         },
       });
 
-      const conversationHistory = storage.getConversationHistory();
-      wsClient.send({ type: 'conversation_update', data: conversationHistory });
+      // Build conversation_update from current chatHistory + new user + assistant messages
+      const messages = [
+        ...currentState.chatHistory.map((m) => ({
+          role: m.role === 'learner' ? 'user' : 'assistant',
+          content: m.content,
+          timestamp: m.timestamp || new Date().toISOString(),
+        })),
+        {
+          role: 'user',
+          content: pendingTranscription,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          role: 'assistant',
+          content: pendingLLMResponse,
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      wsClient.send({
+        type: 'conversation_update',
+        conversationId,
+        messages,
+      });
 
       dispatch({ type: 'SET_PENDING_TRANSCRIPTION', payload: null });
       pendingLLMResponseRef.current = null;
@@ -686,12 +774,16 @@ export function AppProvider({ children }: AppProviderProps) {
       });
 
       if (status === 'connected') {
-        const existingConversation = storage.getConversationHistory();
-        if (existingConversation.messages.length > 0) {
-          wsClient.send({
-            type: 'conversation_update',
-            data: existingConversation,
-          });
+        const currentId = stateRef.current.currentConversationId;
+        if (currentId) {
+          const conversationData = storage.getConversation(currentId);
+          if (conversationData && conversationData.messages.length > 0) {
+            wsClient.send({
+              type: 'conversation_update',
+              conversationId: currentId,
+              messages: conversationData.messages,
+            });
+          }
         }
       }
     });
@@ -965,16 +1057,8 @@ export function AppProvider({ children }: AppProviderProps) {
         })) as ChatMessage[];
 
         // Update chat history to match server state
+        // Per-conversation storage is kept in sync by the useEffect on chatHistory
         dispatch({ type: 'SET_CHAT_HISTORY', payload: chatHistory });
-
-        // Also update storage to stay in sync
-        storage.clearConversation();
-        messages.forEach((m) => {
-          storage.addMessage(
-            m.role === 'user' ? 'user' : 'assistant',
-            m.content
-          );
-        });
 
         // Clear any pending state
         dispatch({ type: 'SET_PENDING_TRANSCRIPTION', payload: null });
@@ -1263,7 +1347,6 @@ export function AppProvider({ children }: AppProviderProps) {
       }
 
       // Add user message to chat history immediately (unlike audio where we wait for transcription)
-      storage.addMessage('user', trimmedText);
       dispatch({
         type: 'ADD_MESSAGE',
         payload: {
@@ -1299,6 +1382,21 @@ export function AppProvider({ children }: AppProviderProps) {
       wsClient.send({
         type: 'tts_pronounce_request',
         text: trimmedText,
+      });
+    },
+    [state.connectionStatus]
+  );
+
+  // Request flashcard generation for a specific word
+  const createFlashcardForWord = useCallback(
+    (word: string) => {
+      const wsClient = wsClientRef.current;
+      const trimmed = word.trim();
+      if (state.connectionStatus !== 'connected' || !trimmed) return;
+
+      wsClient.send({
+        type: 'create_flashcard_request',
+        word: trimmed,
       });
     },
     [state.connectionStatus]
@@ -1645,6 +1743,7 @@ export function AppProvider({ children }: AppProviderProps) {
       handleInterrupt,
       sendTextMessage,
       pronounceWord,
+      createFlashcardForWord,
       selectConversation,
       createNewConversation,
       deleteConversation,
@@ -1663,6 +1762,7 @@ export function AppProvider({ children }: AppProviderProps) {
       handleInterrupt,
       sendTextMessage,
       pronounceWord,
+      createFlashcardForWord,
       selectConversation,
       createNewConversation,
       deleteConversation,

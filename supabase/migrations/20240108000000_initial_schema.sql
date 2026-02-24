@@ -51,7 +51,10 @@ create table public.flashcards (
   target_word text not null,
   english text not null,
   example text,
+  example_translation text,
   mnemonic text,
+  pinyin text,
+  example_pinyin text,
   created_at timestamptz default now() not null,
   unique(user_id, conversation_id, target_word)
 );

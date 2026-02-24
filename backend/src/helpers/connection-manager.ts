@@ -4,7 +4,7 @@
  * This replaces the AudioProcessor for Inworld Runtime 0.9.
  * Key differences from AudioProcessor:
  * - Uses MultimodalStreamManager to feed audio to a long-running graph
- * - VAD is handled inside the graph by AssemblyAI (not external Silero)
+ * - VAD is handled inside the graph by the STT provider (AssemblyAI or Soniox)
  * - Graph runs continuously for the session duration
  */
 
@@ -465,9 +465,7 @@ export class ConnectionManager {
             }
           }
 
-          // Only send completion signals if not interrupted
           if (!wasInterrupted) {
-            // Send completion signals
             if (!this.isSwitchingConversation) {
               this.logger.debug('tts_stream_complete');
               this.sendToClient({
@@ -476,7 +474,6 @@ export class ConnectionManager {
                 timestamp: Date.now(),
               });
 
-              // Send conversation update with conversationId
               this.sendToClient({
                 type: 'conversation_update',
                 messages: connection.state.messages,
@@ -484,14 +481,17 @@ export class ConnectionManager {
                 timestamp: Date.now(),
               });
             }
-
-            // Trigger flashcard, feedback, and memory generation after TTS completes
-            this.triggerFlashcardGeneration();
-            this.triggerFeedbackGeneration();
-            this.triggerMemoryGeneration();
           } else {
-            this.logger.debug('tts_interrupted_skipping_completion');
+            this.logger.debug('tts_interrupted_skipping_audio_completion');
           }
+
+          // Always trigger flashcard/feedback/memory generation even if TTS was
+          // interrupted — the conversation content is still valid. Messages may
+          // have been rolled back for utterance stitching, but the remaining
+          // history still provides useful context for flashcard generation.
+          this.triggerFlashcardGeneration();
+          this.triggerFeedbackGeneration();
+          this.triggerMemoryGeneration();
           this.markProcessingComplete();
         },
 
@@ -683,7 +683,10 @@ export class ConnectionManager {
    * Trigger flashcard generation
    */
   private triggerFlashcardGeneration(): void {
-    if (!this.flashcardCallback) return;
+    if (!this.flashcardCallback) {
+      this.logger.debug('skipping_flashcard_no_callback');
+      return;
+    }
     if (this.conversationId !== this.processingConversationId) {
       this.logger.info('skipping_flashcard_generation_conversation_changed');
       return;
@@ -703,6 +706,16 @@ export class ConnectionManager {
         role: m.role,
         content: m.content,
       }));
+
+    if (recentMessages.length === 0) {
+      this.logger.info('skipping_flashcard_no_messages');
+      return;
+    }
+
+    this.logger.info(
+      { messageCount: recentMessages.length, language: snapshotLanguageCode },
+      'triggering_flashcard_generation'
+    );
 
     // Track pending flashcard generation
     this.pendingFlashcardGeneration = this.flashcardCallback(
@@ -1085,8 +1098,8 @@ export class ConnectionManager {
     // End the multimodal stream
     this.multimodalStreamManager.end();
 
-    // Close AssemblyAI session
-    await this.graphWrapper.assemblyAINode.closeSession(this.sessionId);
+    // Close STT session
+    await this.graphWrapper.sttNode.closeSession(this.sessionId);
 
     // Remove from connections map
     delete this.connections[this.sessionId];

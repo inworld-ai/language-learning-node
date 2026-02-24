@@ -2,13 +2,13 @@
  * Conversation Graph for Language Learning App - Inworld Runtime 0.9
  *
  * This is a long-running circular graph that:
- * - Processes continuous audio streams via AssemblyAI STT with built-in VAD
+ * - Processes continuous audio streams via STT (AssemblyAI or Soniox) with built-in VAD
  * - Queues interactions for sequential processing
  * - Uses language-specific prompts and TTS voices
  * - Loops back for the next interaction automatically
  *
  * Graph Flow:
- * AudioInput → AssemblyAI STT (loop) → TranscriptExtractor → InteractionQueue
+ * AudioInput → STT (loop) → TranscriptExtractor → InteractionQueue
  *    → TextInput → DialogPromptBuilder → LLM → TextChunking → TTSRequestBuilder → TTS
  *    → TextAggregator → StateUpdate → (loop back to InteractionQueue)
  */
@@ -16,6 +16,7 @@
 import {
   Graph,
   GraphBuilder,
+  CustomNode,
   ProxyNode,
   RemoteLLMChatNode,
   RemoteTTSNode,
@@ -24,6 +25,8 @@ import {
 } from '@inworld/runtime/graph';
 
 import { AssemblyAISTTWebSocketNode } from './nodes/assembly-ai-stt-ws-node.js';
+import { SonioxSTTWebSocketNode } from './nodes/soniox-stt-ws-node.js';
+import { STTNode } from './nodes/stt-node.js';
 import { DialogPromptBuilderNode } from './nodes/dialog-prompt-builder-node.js';
 import { InteractionQueueNode } from './nodes/interaction-queue-node.js';
 import { MemoryRetrievalNode } from './nodes/memory-retrieval-node.js';
@@ -37,33 +40,36 @@ import {
   DEFAULT_LANGUAGE_CODE,
 } from '../config/languages.js';
 import { llmConfig } from '../config/llm.js';
-import { serverConfig, getAssemblyAISettings } from '../config/server.js';
+import {
+  serverConfig,
+  getAssemblyAISettings,
+  getSonioxSettings,
+  STTProvider,
+} from '../config/server.js';
 import { graphLogger as logger } from '../utils/logger.js';
 
 export interface ConversationGraphConfig {
-  assemblyAIApiKey: string;
+  sttProvider: STTProvider;
+  sttApiKey: string;
   connections: ConnectionsMap;
   defaultLanguageCode?: string;
 }
 
 /**
- * Wrapper class for the conversation graph
- * Provides access to the graph and the AssemblyAI node for session management
+ * Wrapper class for the conversation graph.
+ * Provides access to the graph and the STT node for session management.
  */
 export class ConversationGraphWrapper {
   graph: Graph;
-  assemblyAINode: AssemblyAISTTWebSocketNode;
+  sttNode: STTNode;
 
-  private constructor(params: {
-    graph: Graph;
-    assemblyAINode: AssemblyAISTTWebSocketNode;
-  }) {
+  private constructor(params: { graph: Graph; sttNode: STTNode }) {
     this.graph = params.graph;
-    this.assemblyAINode = params.assemblyAINode;
+    this.sttNode = params.sttNode;
   }
 
   async destroy(): Promise<void> {
-    await this.assemblyAINode.destroy();
+    await this.sttNode.destroy();
     await this.graph.stop();
   }
 
@@ -73,15 +79,19 @@ export class ConversationGraphWrapper {
   static create(config: ConversationGraphConfig): ConversationGraphWrapper {
     const {
       connections,
-      assemblyAIApiKey,
+      sttProvider,
+      sttApiKey,
       defaultLanguageCode = DEFAULT_LANGUAGE_CODE,
     } = config;
-    // Use provided language code or default to Spanish
     const langConfig = getLanguageConfig(defaultLanguageCode);
     const postfix = `-lang-learning`;
 
     logger.info(
-      { language: langConfig.name, languageCode: defaultLanguageCode },
+      {
+        language: langConfig.name,
+        languageCode: defaultLanguageCode,
+        sttProvider,
+      },
       'creating_conversation_graph'
     );
 
@@ -89,25 +99,39 @@ export class ConversationGraphWrapper {
     // Create Nodes
     // ============================================================
 
-    // Start node (audio input proxy)
     const audioInputNode = new ProxyNode({ id: `audio-input-proxy${postfix}` });
 
-    // AssemblyAI STT with built-in VAD (always uses multilingual model)
-    const turnDetectionSettings = getAssemblyAISettings();
-    const assemblyAISTTNode = new AssemblyAISTTWebSocketNode({
-      id: `assembly-ai-stt-ws-node${postfix}`,
-      config: {
-        apiKey: assemblyAIApiKey,
-        connections: connections,
-        sampleRate: serverConfig.audio.inputSampleRate,
-        formatTurns: serverConfig.assemblyAI.formatTurns,
-        endOfTurnConfidenceThreshold:
-          turnDetectionSettings.endOfTurnConfidenceThreshold,
-        minEndOfTurnSilenceWhenConfident:
-          turnDetectionSettings.minEndOfTurnSilenceWhenConfident,
-        maxTurnSilence: turnDetectionSettings.maxTurnSilence,
-      },
-    });
+    // Create STT node based on provider
+    let sttCustomNode: CustomNode & STTNode;
+
+    if (sttProvider === 'soniox') {
+      const sonioxSettings = getSonioxSettings();
+      sttCustomNode = new SonioxSTTWebSocketNode({
+        id: `stt-ws-node${postfix}`,
+        config: {
+          apiKey: sttApiKey,
+          connections: connections,
+          sampleRate: serverConfig.audio.inputSampleRate,
+          maxEndpointDelayMs: sonioxSettings.maxEndpointDelayMs,
+        },
+      });
+    } else {
+      const turnDetectionSettings = getAssemblyAISettings();
+      sttCustomNode = new AssemblyAISTTWebSocketNode({
+        id: `stt-ws-node${postfix}`,
+        config: {
+          apiKey: sttApiKey,
+          connections: connections,
+          sampleRate: serverConfig.audio.inputSampleRate,
+          formatTurns: serverConfig.assemblyAI.formatTurns,
+          endOfTurnConfidenceThreshold:
+            turnDetectionSettings.endOfTurnConfidenceThreshold,
+          minEndOfTurnSilenceWhenConfident:
+            turnDetectionSettings.minEndOfTurnSilenceWhenConfident,
+          maxTurnSilence: turnDetectionSettings.maxTurnSilence,
+        },
+      });
+    }
 
     const transcriptExtractorNode = new TranscriptExtractorNode({
       id: `transcript-extractor-node${postfix}`,
@@ -190,7 +214,7 @@ export class ConversationGraphWrapper {
     graphBuilder
       // Add all nodes
       .addNode(audioInputNode)
-      .addNode(assemblyAISTTNode)
+      .addNode(sttCustomNode)
       .addNode(transcriptExtractorNode)
       .addNode(interactionQueueNode)
       .addNode(textInputNode)
@@ -206,10 +230,10 @@ export class ConversationGraphWrapper {
       // ============================================================
       // Audio Input Flow (STT with VAD)
       // ============================================================
-      .addEdge(audioInputNode, assemblyAISTTNode)
+      .addEdge(audioInputNode, sttCustomNode)
 
-      // AssemblyAI loops back to itself while stream is active
-      .addEdge(assemblyAISTTNode, assemblyAISTTNode, {
+      // STT loops back to itself while stream is active
+      .addEdge(sttCustomNode, sttCustomNode, {
         condition: async (input: unknown) => {
           const data = input as { stream_exhausted?: boolean };
           return data?.stream_exhausted !== true;
@@ -219,7 +243,7 @@ export class ConversationGraphWrapper {
       })
 
       // When interaction is complete, extract transcript
-      .addEdge(assemblyAISTTNode, transcriptExtractorNode, {
+      .addEdge(sttCustomNode, transcriptExtractorNode, {
         condition: async (input: unknown) => {
           const data = input as { interaction_complete?: boolean };
           return data?.interaction_complete === true;
@@ -283,7 +307,7 @@ export class ConversationGraphWrapper {
 
     return new ConversationGraphWrapper({
       graph,
-      assemblyAINode: assemblyAISTTNode,
+      sttNode: sttCustomNode,
     });
   }
 }

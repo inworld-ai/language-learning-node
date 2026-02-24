@@ -14,6 +14,8 @@ services:
         sync: false
       - key: ASSEMBLY_AI_API_KEY
         sync: false
+      - key: SONIOX_API_KEY
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SECRET_KEY

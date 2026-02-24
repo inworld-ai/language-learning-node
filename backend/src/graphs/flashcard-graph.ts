@@ -14,6 +14,7 @@ import { v4 } from 'uuid';
 import { Flashcard } from '../helpers/flashcard-processor.js';
 import { llmConfig } from '../config/llm.js';
 import { flashcardLogger as logger } from '../utils/logger.js';
+import { jsonrepair } from 'jsonrepair';
 
 class FlashcardPromptBuilderNode extends CustomNode {
   async process(
@@ -38,31 +39,49 @@ class TextToChatRequestNode extends CustomNode {
 
 class FlashcardParserNode extends CustomNode {
   process(_context: ProcessContext, input: GraphTypes.Content) {
-    try {
-      const content =
-        (input &&
-          typeof input === 'object' &&
-          'content' in input &&
-          (input as { content?: unknown }).content) ||
-        input;
-      const textContent =
-        typeof content === 'string' ? content : JSON.stringify(content);
+    const content =
+      (input &&
+        typeof input === 'object' &&
+        'content' in input &&
+        (input as { content?: unknown }).content) ||
+      input;
+    const textContent =
+      typeof content === 'string' ? content : JSON.stringify(content);
 
-      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
+    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const raw = jsonMatch[0];
+      let parsed: Record<string, string> | undefined;
+
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        try {
+          parsed = JSON.parse(jsonrepair(raw));
+          logger.warn({ raw: raw.slice(0, 500) }, 'flashcard_json_repaired');
+        } catch (repairError) {
+          logger.error(
+            { raw: raw.slice(0, 500), err: repairError },
+            'failed_to_parse_flashcard_json'
+          );
+        }
+      }
+
+      if (parsed) {
+        const result: Record<string, unknown> = {
           id: v4(),
-          // Support both new 'targetWord' format and legacy 'spanish' format
           targetWord: parsed.targetWord ?? parsed.spanish ?? '',
           english: parsed.english ?? '',
           example: parsed.example ?? '',
           mnemonic: parsed.mnemonic ?? '',
           timestamp: new Date().toISOString(),
         };
+        if (parsed.exampleTranslation)
+          result.exampleTranslation = parsed.exampleTranslation;
+        if (parsed.pinyin) result.pinyin = parsed.pinyin;
+        if (parsed.examplePinyin) result.examplePinyin = parsed.examplePinyin;
+        return result;
       }
-    } catch (error) {
-      logger.error({ err: error }, 'failed_to_parse_flashcard_json');
     }
 
     return {

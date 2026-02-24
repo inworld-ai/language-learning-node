@@ -33,7 +33,10 @@ Thank you for your interest in contributing to the Language Learning App! This d
 
    ```bash
    INWORLD_API_KEY=your_api_key_here
+   # Set one of these:
    ASSEMBLY_AI_API_KEY=your_api_key_here
+   # or
+   SONIOX_API_KEY=your_api_key_here
    ```
 
 5. **Verify the setup**:
