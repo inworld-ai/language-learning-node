@@ -40,7 +40,8 @@ const inworldSTTPresets: Record<InworldSTTEagerness, InworldSTTSettings> = {
     silenceThresholdMs: 700,
     minSpeechMs: 150,
     silenceEnergyThreshold: 0.01,
-    description: 'Balanced - Natural middle ground for most conversational turns',
+    description:
+      'Balanced - Natural middle ground for most conversational turns',
   },
 
   /**

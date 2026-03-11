@@ -61,7 +61,11 @@ function encodePCM16ToBase64(chunks: Int16Array[]): string {
     offset += chunk.length;
   }
   // Convert Int16Array to Buffer (little-endian bytes)
-  const byteBuffer = Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  const byteBuffer = Buffer.from(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength
+  );
   return byteBuffer.toString('base64');
 }
 
@@ -223,7 +227,6 @@ export class InworldSTTNode extends CustomNode {
 
     // VAD state
     const speechBuffer: Int16Array[] = [];
-    const samplesPerMs = this.sampleRate / 1000;
     const silenceChunksThreshold = Math.ceil(
       this.silenceThresholdMs / 100 // chunks are ~100ms each (1600 samples @ 16kHz)
     );
