@@ -12,8 +12,6 @@ services:
         value: production
       - key: INWORLD_API_KEY
         sync: false
-      - key: ASSEMBLY_AI_API_KEY
-        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SECRET_KEY
