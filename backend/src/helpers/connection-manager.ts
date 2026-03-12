@@ -1085,9 +1085,6 @@ export class ConnectionManager {
     // End the multimodal stream
     this.multimodalStreamManager.end();
 
-    // Destroy Inworld STT node
-    await this.graphWrapper.inworldSTTNode.destroy();
-
     // Remove from connections map
     delete this.connections[this.sessionId];
 

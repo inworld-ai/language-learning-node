@@ -69,6 +69,8 @@ function encodePCM16ToBase64(chunks: Int16Array[]): string {
   return byteBuffer.toString('base64');
 }
 
+const INWORLD_STT_TIMEOUT_MS = 15000;
+
 /**
  * Call the Inworld STT REST API with buffered PCM16 audio.
  */
@@ -76,22 +78,41 @@ async function callInworldSTT(
   apiKey: string,
   audioBase64: string
 ): Promise<string> {
-  const response = await fetch(INWORLD_STT_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      transcribeConfig: {
-        modelId: 'groq/whisper-large-v3',
-        audioEncoding: 'LINEAR16',
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    INWORLD_STT_TIMEOUT_MS
+  );
+
+  let response: Response;
+  try {
+    response = await fetch(INWORLD_STT_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      audioData: {
-        content: audioBase64,
-      },
-    }),
-  });
+      body: JSON.stringify({
+        transcribeConfig: {
+          modelId: 'groq/whisper-large-v3',
+          audioEncoding: 'LINEAR16',
+        },
+        audioData: {
+          content: audioBase64,
+        },
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(
+        `Inworld STT request timed out after ${INWORLD_STT_TIMEOUT_MS}ms`
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
