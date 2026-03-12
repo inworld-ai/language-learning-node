@@ -31,14 +31,14 @@ export function getGraphWrapper(): ConversationGraphWrapper | null {
 }
 
 export async function initializeGraph(): Promise<void> {
-  const assemblyAIApiKey = process.env.ASSEMBLY_AI_API_KEY;
-  if (!assemblyAIApiKey) {
-    throw new Error('ASSEMBLY_AI_API_KEY environment variable is required');
+  const inworldApiKey = process.env.INWORLD_API_KEY;
+  if (!inworldApiKey) {
+    throw new Error('INWORLD_API_KEY environment variable is required');
   }
 
   logger.info('initializing_conversation_graph');
   graphWrapper = getConversationGraph({
-    assemblyAIApiKey,
+    inworldApiKey,
     connections,
     defaultLanguageCode: 'es', // Always Spanish
   });
