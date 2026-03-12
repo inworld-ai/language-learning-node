@@ -69,6 +69,9 @@ function encodePCM16ToBase64(chunks: Int16Array[]): string {
   return byteBuffer.toString('base64');
 }
 
+/** Timeout for STT API requests in milliseconds */
+const STT_REQUEST_TIMEOUT_MS = 30000;
+
 /**
  * Call the Inworld STT REST API with buffered PCM16 audio.
  */
@@ -76,34 +79,52 @@ async function callInworldSTT(
   apiKey: string,
   audioBase64: string
 ): Promise<string> {
-  const response = await fetch(INWORLD_STT_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      transcribeConfig: {
-        modelId: 'groq/whisper-large-v3',
-        audioEncoding: 'LINEAR16',
-      },
-      audioData: {
-        content: audioBase64,
-      },
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    STT_REQUEST_TIMEOUT_MS
+  );
 
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    throw new Error(
-      `Inworld STT request failed: ${response.status} ${response.statusText} - ${errText}`
-    );
+  try {
+    const response = await fetch(INWORLD_STT_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transcribeConfig: {
+          modelId: 'groq/whisper-large-v3',
+          audioEncoding: 'LINEAR16',
+        },
+        audioData: {
+          content: audioBase64,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(
+        `Inworld STT request failed: ${response.status} ${response.statusText} - ${errText}`
+      );
+    }
+
+    const json = (await response.json()) as {
+      transcription?: { transcript?: string };
+    };
+    return json?.transcription?.transcript ?? '';
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(
+        `Inworld STT request timed out after ${STT_REQUEST_TIMEOUT_MS}ms`
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const json = (await response.json()) as {
-    transcription?: { transcript?: string };
-  };
-  return json?.transcription?.transcript ?? '';
 }
 
 /**

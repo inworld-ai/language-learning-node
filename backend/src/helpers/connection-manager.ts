@@ -1085,8 +1085,9 @@ export class ConnectionManager {
     // End the multimodal stream
     this.multimodalStreamManager.end();
 
-    // Destroy Inworld STT node
-    await this.graphWrapper.inworldSTTNode.destroy();
+    // Note: Do NOT destroy the STT node here - it's shared across sessions
+    // via the cached ConversationGraphWrapper. The STT node will be cleaned
+    // up when destroyConversationGraph() is called during server shutdown.
 
     // Remove from connections map
     delete this.connections[this.sessionId];
