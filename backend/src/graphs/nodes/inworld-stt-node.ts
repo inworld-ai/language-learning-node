@@ -460,21 +460,6 @@ export class InworldSTTNode extends CustomNode {
     }
   }
 
-  private sendPartialTranscript(
-    sessionId: string,
-    interactionId: string,
-    text: string
-  ): void {
-    const connection = this.connections[sessionId];
-    if (!connection?.onPartialTranscript) return;
-
-    try {
-      connection.onPartialTranscript(text, interactionId);
-    } catch (error) {
-      logger.error({ err: error }, 'error_sending_partial_transcript');
-    }
-  }
-
   async destroy(): Promise<void> {
     logger.info('destroying_node');
   }
