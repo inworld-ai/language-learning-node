@@ -6,20 +6,25 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { WebSocket } from 'ws';
 
 // ---------------------------------------------------------------------------
 // Mocks — factories must be self-contained (vi.mock is hoisted)
 // ---------------------------------------------------------------------------
 vi.mock('@inworld/runtime', () => {
   class DataStreamWithMetadata {
-    stream: any;
-    metadata: Record<string, any>;
-    constructor(stream: any, metadata: Record<string, any> = {}) {
+    stream: unknown;
+    metadata: Record<string, unknown>;
+    constructor(stream: unknown, metadata: Record<string, unknown> = {}) {
       this.stream = stream;
       this.metadata = metadata;
     }
-    getMetadata() { return this.metadata; }
-    toStream() { return this.stream; }
+    getMetadata() {
+      return this.metadata;
+    }
+    toStream() {
+      return this.stream;
+    }
   }
   return { DataStreamWithMetadata };
 });
@@ -41,10 +46,15 @@ import { InworldSTTNode } from '../../graphs/nodes/inworld-stt-node.js';
 
 /** Shape of the mocked DataStreamWithMetadata returned by the node */
 interface MockResult {
-  stream: any;
-  metadata: Record<string, any>;
+  stream: unknown;
+  metadata: Record<string, unknown>;
 }
 import type { Connection, State } from '../../types/index.js';
+
+/** Minimal context shape required by InworldSTTNode.process() */
+interface MockProcessContext {
+  getDatastore(): { get(key: string): string | undefined };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,7 +62,7 @@ import type { Connection, State } from '../../types/index.js';
 
 function makeConnection(overrides: Partial<Connection> = {}): Connection {
   return {
-    ws: {} as any,
+    ws: {} as WebSocket,
     state: {
       interactionId: '',
       messages: [],
@@ -65,12 +75,12 @@ function makeConnection(overrides: Partial<Connection> = {}): Connection {
   };
 }
 
-function makeContext(sessionId: string) {
+function makeContext(sessionId: string): MockProcessContext {
   return {
     getDatastore: () => ({
       get: (key: string) => (key === 'sessionId' ? sessionId : undefined),
     }),
-  } as any;
+  };
 }
 
 /**
@@ -84,10 +94,12 @@ function makeAudioChunk(amplitude = 0.5, samples = 1600): number[] {
   );
 }
 
+type AudioChunk = { audio?: { data: number[] }; text?: string };
+
 /** Async generator that yields MultimodalContent-shaped objects */
 async function* makeAudioStream(
-  chunks: Array<{ audio?: { data: number[] }; text?: string }>
-): AsyncIterableIterator<any> {
+  chunks: AudioChunk[]
+): AsyncIterableIterator<AudioChunk> {
   for (const chunk of chunks) {
     yield chunk;
   }
@@ -135,7 +147,10 @@ describe('InworldSTTNode', () => {
       expect(
         () =>
           new InworldSTTNode({
-            config: { apiKey: 'key', connections: null as any },
+            config: {
+              apiKey: 'key',
+              connections: null as unknown as Record<string, Connection>,
+            },
           })
       ).toThrow('requires a connections object');
     });
@@ -160,7 +175,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         stream,
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       expect(result.metadata.transcript).toBe('Hola mundo');
@@ -201,7 +216,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         stream,
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       expect(fetchMock).toHaveBeenCalledOnce();
@@ -227,7 +242,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         stream,
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       expect(fetchMock).not.toHaveBeenCalled();
@@ -239,10 +254,13 @@ describe('InworldSTTNode', () => {
       const sid = 'sess-callback';
       const onSpeechDetected = vi.fn();
       const conn = makeConnection({ onSpeechDetected });
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ transcription: { transcript: 'test' } }),
-      }));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ transcription: { transcript: 'test' } }),
+        })
+      );
 
       const node = makeNode({ [sid]: conn });
 
@@ -254,7 +272,11 @@ describe('InworldSTTNode', () => {
         { audio: { data: makeAudioChunk(0.0) } },
       ];
 
-      await node.process(makeContext(sid), makeAudioStream(chunks), null as any);
+      await node.process(
+        makeContext(sid),
+        makeAudioStream(chunks),
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
+      );
 
       expect(onSpeechDetected).toHaveBeenCalledOnce();
     });
@@ -267,12 +289,15 @@ describe('InworldSTTNode', () => {
     it('handles STT API error response gracefully', async () => {
       const sid = 'sess-err';
       const conn = makeConnection();
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized',
-        text: async () => 'invalid key',
-      }));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          text: async () => 'invalid key',
+        })
+      );
 
       const node = makeNode({ [sid]: conn });
 
@@ -288,7 +313,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         makeAudioStream(chunks),
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       expect(result.metadata.error_occurred).toBe(true);
@@ -331,14 +356,13 @@ describe('InworldSTTNode', () => {
       const processPromise = node.process(
         makeContext(sid),
         makeAudioStream(chunks),
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       );
 
       // Advance timers past the 15-second timeout
       await vi.advanceTimersByTimeAsync(16000);
 
-      const result =
-        (await processPromise) as unknown as MockResult;
+      const result = (await processPromise) as unknown as MockResult;
 
       expect(result.metadata.error_occurred).toBe(true);
       expect(result.metadata.error_message).toMatch(/timed out/i);
@@ -349,10 +373,13 @@ describe('InworldSTTNode', () => {
     it('stitches pendingTranscript with new transcript', async () => {
       const sid = 'sess-stitch';
       const conn = makeConnection({ pendingTranscript: 'Hola' });
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ transcription: { transcript: 'mundo' } }),
-      }));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ transcription: { transcript: 'mundo' } }),
+        })
+      );
 
       const node = makeNode({ [sid]: conn });
 
@@ -368,7 +395,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         makeAudioStream(chunks),
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       expect(result.metadata.transcript).toBe('Hola mundo');
@@ -385,7 +412,11 @@ describe('InworldSTTNode', () => {
       const stream = makeAudioStream([{ text: 'hi' }]);
 
       await expect(
-        node.process(makeContext('unknown-session'), stream, null as any)
+        node.process(
+          makeContext('unknown-session'),
+          stream,
+          null as unknown as Parameters<InworldSTTNode['process']>[2]
+        )
       ).rejects.toThrow('Failed to read connection');
     });
 
@@ -396,7 +427,11 @@ describe('InworldSTTNode', () => {
       const stream = makeAudioStream([{ text: 'hi' }]);
 
       await expect(
-        node.process(makeContext(sid), stream, null as any)
+        node.process(
+          makeContext(sid),
+          stream,
+          null as unknown as Parameters<InworldSTTNode['process']>[2]
+        )
       ).rejects.toThrow('Session unloaded');
     });
   });
@@ -414,7 +449,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         stream,
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       const m = result.metadata;
@@ -437,7 +472,7 @@ describe('InworldSTTNode', () => {
       const r1 = (await node.process(
         makeContext(sid),
         makeAudioStream([{ text: 'uno' }]),
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       expect(r1.metadata.iteration).toBe(1);
@@ -453,7 +488,7 @@ describe('InworldSTTNode', () => {
       const result = (await node.process(
         makeContext(sid),
         makeAudioStream([{ text: 'tres' }]),
-        null as any
+        null as unknown as Parameters<InworldSTTNode['process']>[2]
       )) as unknown as MockResult;
 
       // Should continue from iteration 3 → 4

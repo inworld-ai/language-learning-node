@@ -301,10 +301,13 @@ function handleConversationUpdate(
   }
 ): void {
   // Handle both formats: { data: { messages: [...] } } and { messages: [...] }
+  type DataWithMessages = {
+    messages?: Array<{ role: string; content: string; timestamp?: string }>;
+  };
   const messages =
     message.messages ||
     message.data?.messages ||
-    (message.data as any)?.messages;
+    (message.data as DataWithMessages | undefined)?.messages;
 
   if (!messages || !Array.isArray(messages)) {
     logger.debug(
