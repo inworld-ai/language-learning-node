@@ -75,55 +75,59 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     });
 
     // Set up flashcard generation callback
-    connectionManager.setFlashcardCallback(async (messages) => {
-      if (isShuttingDown()) {
-        logger.debug(
-          { connectionId },
-          'skipping_flashcard_generation_shutting_down'
-        );
-        return;
-      }
-
-      try {
-        const attrs = connectionAttributes.get(connectionId) || {};
-        const userAttributes: Record<string, string> = {
-          timezone: attrs.timezone || '',
-        };
-
-        const targetingKey = attrs.userId || connectionId;
-        const userContext = {
-          attributes: userAttributes,
-          targetingKey,
-        };
-
-        const flashcards = await flashcardProcessor.generateFlashcards(
-          messages,
-          1,
-          userContext
-        );
-        if (flashcards.length > 0) {
-          const conversationId = connectionManager.getConversationId();
-          ws.send(
-            JSON.stringify({
-              type: 'flashcards_generated',
-              flashcards,
-              conversationId: conversationId || null,
-            })
+    // conversationId + languageCode are captured at trigger time, not read from mutable state
+    connectionManager.setFlashcardCallback(
+      async (messages, conversationId, languageCode) => {
+        if (isShuttingDown()) {
+          logger.debug(
+            { connectionId },
+            'skipping_flashcard_generation_shutting_down'
           );
+          return;
         }
-      } catch (error) {
-        if (!isShuttingDown()) {
-          logger.error(
-            { err: error, connectionId },
-            'flashcard_generation_error'
+
+        try {
+          const attrs = connectionAttributes.get(connectionId) || {};
+          const userAttributes: Record<string, string> = {
+            timezone: attrs.timezone || '',
+          };
+
+          const targetingKey = attrs.userId || connectionId;
+          const userContext = {
+            attributes: userAttributes,
+            targetingKey,
+          };
+
+          const flashcards = await flashcardProcessor.generateFlashcards(
+            messages,
+            1,
+            userContext,
+            languageCode
           );
+          if (flashcards.length > 0 && ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: 'flashcards_generated',
+                flashcards,
+                conversationId: conversationId || null,
+              })
+            );
+          }
+        } catch (error) {
+          if (!isShuttingDown()) {
+            logger.error(
+              { err: error, connectionId },
+              'flashcard_generation_error'
+            );
+          }
         }
       }
-    });
+    );
 
     // Set up feedback generation callback
+    // conversationId is captured at trigger time, not read from mutable state
     connectionManager.setFeedbackCallback(
-      async (messages, currentTranscript) => {
+      async (messages, currentTranscript, conversationId, languageCode) => {
         if (isShuttingDown()) {
           logger.debug(
             { connectionId },
@@ -147,11 +151,11 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           const feedback = await feedbackProcessor.generateFeedback(
             messages,
             currentTranscript,
-            userContext
+            userContext,
+            languageCode
           );
 
-          if (feedback) {
-            const conversationId = connectionManager.getConversationId();
+          if (feedback && ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
                 type: 'feedback_generated',
@@ -173,7 +177,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
     );
 
     // Set up memory generation callback
-    connectionManager.setMemoryCallback(async (messages) => {
+    // conversationId is captured at trigger time (unused here but kept for consistency)
+    connectionManager.setMemoryCallback(async (messages, _conversationId) => {
       if (isShuttingDown()) {
         return;
       }
@@ -296,10 +301,13 @@ function handleConversationUpdate(
   }
 ): void {
   // Handle both formats: { data: { messages: [...] } } and { messages: [...] }
+  type DataWithMessages = {
+    messages?: Array<{ role: string; content: string; timestamp?: string }>;
+  };
   const messages =
     message.messages ||
     message.data?.messages ||
-    (message.data as any)?.messages;
+    (message.data as DataWithMessages | undefined)?.messages;
 
   if (!messages || !Array.isArray(messages)) {
     logger.debug(
@@ -413,11 +421,22 @@ async function handleConversationSwitch(
   try {
     // Switch conversation (waits for pending operations FIRST)
     // This ensures any flashcard/feedback generation in progress uses the OLD language
-    await connectionManager.switchConversation(
+    // Returns false if another switch is already in progress
+    const switched = await connectionManager.switchConversation(
       conversationId,
       languageCode,
       messages
     );
+
+    if (!switched) {
+      // Another switch is in progress - don't update processors or send ready signal
+      // The in-progress switch will complete and send its own conversation_ready
+      logger.warn(
+        { connectionId, conversationId, languageCode },
+        'conversation_switch_rejected_already_switching'
+      );
+      return;
+    }
 
     // Update processors with new language AFTER pending operations complete
     // This ensures flashcard generation for the old conversation uses the old language

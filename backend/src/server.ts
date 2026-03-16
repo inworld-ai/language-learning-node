@@ -1,7 +1,7 @@
 /**
  * Language Learning Server - Inworld Runtime 0.9
  *
- * This server uses a long-running circular graph with AssemblyAI for VAD/STT.
+ * This server uses a long-running circular graph with Inworld STT for VAD/STT.
  * Key components:
  * - ConversationGraphWrapper: The main graph that processes audio → STT → LLM → TTS
  * - ConnectionManager: Manages WebSocket connections and feeds audio to the graph
@@ -66,7 +66,7 @@ async function startServer(): Promise<void> {
     await exportGraphConfigs();
     server.listen(serverConfig.port, () => {
       logger.info({ port: serverConfig.port }, 'server_started');
-      logger.info('using_inworld_runtime_0.9_with_assemblyai_stt');
+      logger.info('using_inworld_runtime_0.9_with_inworld_stt');
     });
   } catch (error) {
     logger.fatal({ err: error }, 'server_start_failed');
