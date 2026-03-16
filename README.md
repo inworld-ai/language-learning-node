@@ -14,7 +14,6 @@ A conversational language learning app powered by Inworld AI Runtime. Practice s
 - Node.js (v20 or higher)
 - npm
 - An Inworld AI account and API key
-- An AssemblyAI account and API key (for speech-to-text)
 
 ## Get Started
 
@@ -39,13 +38,11 @@ Create a `backend/.env` file:
 
 ```bash
 INWORLD_API_KEY=your_inworld_base64_key
-ASSEMBLY_AI_API_KEY=your_assemblyai_key
 ```
 
-| Service        | Get Key From                                        | Purpose                           |
-| -------------- | --------------------------------------------------- | --------------------------------- |
-| **Inworld**    | [platform.inworld.ai](https://platform.inworld.ai/) | AI conversations (Base64 API key) |
-| **AssemblyAI** | [assemblyai.com](https://www.assemblyai.com/)       | Speech-to-text                    |
+| Service     | Get Key From                                        | Purpose                                        |
+| ----------- | --------------------------------------------------- | ---------------------------------------------- |
+| **Inworld** | [platform.inworld.ai](https://platform.inworld.ai/) | AI conversations & speech-to-text (Base64 API key) |
 
 ### Step 4: Run the Application
 
@@ -143,7 +140,7 @@ The app uses a real-time audio streaming architecture:
 
 1. **Frontend** captures microphone audio and streams it via WebSocket
 2. **Backend** processes audio through an Inworld Runtime graph:
-   - AssemblyAI handles speech-to-text with voice activity detection
+   - Inworld STT handles speech-to-text with energy-based voice activity detection
    - LLM generates contextual responses in the target language
    - TTS converts responses back to audio
 3. **Flashcards** are auto-generated from conversation vocabulary
@@ -169,11 +166,10 @@ Without Supabase, the app works in anonymous mode using localStorage (no memory 
 | Variable                    | Required | Description                                                        |
 | --------------------------- | -------- | ------------------------------------------------------------------ |
 | `INWORLD_API_KEY`           | Yes      | Inworld AI Base64 API key                                          |
-| `ASSEMBLY_AI_API_KEY`       | Yes      | AssemblyAI API key                                                 |
 | `PORT`                      | No       | Server port (default: 3000)                                        |
 | `LOG_LEVEL`                 | No       | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default: info) |
 | `NODE_ENV`                  | No       | Set to `production` for production log format                      |
-| `ASSEMBLY_AI_EAGERNESS`     | No       | Turn detection: `low`, `medium`, `high` (default: high)            |
+| `INWORLD_STT_EAGERNESS`     | No       | Turn detection: `low`, `medium`, `high` (default: high)            |
 | `SUPABASE_URL`              | No       | Supabase project URL (enables memory feature)                      |
 | `SUPABASE_SECRET_KEY`       | No       | Supabase secret key (for backend memory storage)                   |
 
