@@ -2,13 +2,13 @@
  * Conversation Graph for Language Learning App - Inworld Runtime 0.9
  *
  * This is a long-running circular graph that:
- * - Processes continuous audio streams via Inworld STT with energy-based VAD
+ * - Processes continuous audio streams via AssemblyAI STT with built-in VAD
  * - Queues interactions for sequential processing
  * - Uses language-specific prompts and TTS voices
  * - Loops back for the next interaction automatically
  *
  * Graph Flow:
- * AudioInput → Inworld STT (loop) → TranscriptExtractor → InteractionQueue
+ * AudioInput → AssemblyAI STT (loop) → TranscriptExtractor → InteractionQueue
  *    → TextInput → DialogPromptBuilder → LLM → TextChunking → TTSRequestBuilder → TTS
  *    → TextAggregator → StateUpdate → (loop back to InteractionQueue)
  */
@@ -23,7 +23,7 @@ import {
   TextAggregatorNode,
 } from '@inworld/runtime/graph';
 
-import { InworldSTTNode } from './nodes/inworld-stt-node.js';
+import { AssemblyAISTTWebSocketNode } from './nodes/assembly-ai-stt-ws-node.js';
 import { DialogPromptBuilderNode } from './nodes/dialog-prompt-builder-node.js';
 import { InteractionQueueNode } from './nodes/interaction-queue-node.js';
 import { MemoryRetrievalNode } from './nodes/memory-retrieval-node.js';
@@ -37,33 +37,33 @@ import {
   DEFAULT_LANGUAGE_CODE,
 } from '../config/languages.js';
 import { llmConfig } from '../config/llm.js';
-import { serverConfig, getInworldSTTSettings } from '../config/server.js';
+import { serverConfig, getAssemblyAISettings } from '../config/server.js';
 import { graphLogger as logger } from '../utils/logger.js';
 
 export interface ConversationGraphConfig {
-  inworldApiKey: string;
+  assemblyAIApiKey: string;
   connections: ConnectionsMap;
   defaultLanguageCode?: string;
 }
 
 /**
  * Wrapper class for the conversation graph
- * Provides access to the graph and the Inworld STT node for session management
+ * Provides access to the graph and the AssemblyAI node for session management
  */
 export class ConversationGraphWrapper {
   graph: Graph;
-  inworldSTTNode: InworldSTTNode;
+  assemblyAINode: AssemblyAISTTWebSocketNode;
 
   private constructor(params: {
     graph: Graph;
-    inworldSTTNode: InworldSTTNode;
+    assemblyAINode: AssemblyAISTTWebSocketNode;
   }) {
     this.graph = params.graph;
-    this.inworldSTTNode = params.inworldSTTNode;
+    this.assemblyAINode = params.assemblyAINode;
   }
 
   async destroy(): Promise<void> {
-    await this.inworldSTTNode.destroy();
+    await this.assemblyAINode.destroy();
     await this.graph.stop();
   }
 
@@ -73,7 +73,7 @@ export class ConversationGraphWrapper {
   static create(config: ConversationGraphConfig): ConversationGraphWrapper {
     const {
       connections,
-      inworldApiKey,
+      assemblyAIApiKey,
       defaultLanguageCode = DEFAULT_LANGUAGE_CODE,
     } = config;
     // Use provided language code or default to Spanish
@@ -92,17 +92,20 @@ export class ConversationGraphWrapper {
     // Start node (audio input proxy)
     const audioInputNode = new ProxyNode({ id: `audio-input-proxy${postfix}` });
 
-    // Inworld STT with energy-based VAD
-    const sttSettings = getInworldSTTSettings();
-    const inworldSTTNode = new InworldSTTNode({
-      id: `inworld-stt-node${postfix}`,
+    // AssemblyAI STT with built-in VAD (always uses multilingual model)
+    const turnDetectionSettings = getAssemblyAISettings();
+    const assemblyAISTTNode = new AssemblyAISTTWebSocketNode({
+      id: `assembly-ai-stt-ws-node${postfix}`,
       config: {
-        apiKey: inworldApiKey,
+        apiKey: assemblyAIApiKey,
         connections: connections,
         sampleRate: serverConfig.audio.inputSampleRate,
-        silenceThresholdMs: sttSettings.silenceThresholdMs,
-        minSpeechMs: sttSettings.minSpeechMs,
-        silenceEnergyThreshold: sttSettings.silenceEnergyThreshold,
+        formatTurns: serverConfig.assemblyAI.formatTurns,
+        endOfTurnConfidenceThreshold:
+          turnDetectionSettings.endOfTurnConfidenceThreshold,
+        minEndOfTurnSilenceWhenConfident:
+          turnDetectionSettings.minEndOfTurnSilenceWhenConfident,
+        maxTurnSilence: turnDetectionSettings.maxTurnSilence,
       },
     });
 
@@ -187,7 +190,7 @@ export class ConversationGraphWrapper {
     graphBuilder
       // Add all nodes
       .addNode(audioInputNode)
-      .addNode(inworldSTTNode)
+      .addNode(assemblyAISTTNode)
       .addNode(transcriptExtractorNode)
       .addNode(interactionQueueNode)
       .addNode(textInputNode)
@@ -203,10 +206,10 @@ export class ConversationGraphWrapper {
       // ============================================================
       // Audio Input Flow (STT with VAD)
       // ============================================================
-      .addEdge(audioInputNode, inworldSTTNode)
+      .addEdge(audioInputNode, assemblyAISTTNode)
 
-      // Inworld STT loops back to itself while stream is active
-      .addEdge(inworldSTTNode, inworldSTTNode, {
+      // AssemblyAI loops back to itself while stream is active
+      .addEdge(assemblyAISTTNode, assemblyAISTTNode, {
         condition: async (input: unknown) => {
           const data = input as { stream_exhausted?: boolean };
           return data?.stream_exhausted !== true;
@@ -216,7 +219,7 @@ export class ConversationGraphWrapper {
       })
 
       // When interaction is complete, extract transcript
-      .addEdge(inworldSTTNode, transcriptExtractorNode, {
+      .addEdge(assemblyAISTTNode, transcriptExtractorNode, {
         condition: async (input: unknown) => {
           const data = input as { interaction_complete?: boolean };
           return data?.interaction_complete === true;
@@ -280,7 +283,7 @@ export class ConversationGraphWrapper {
 
     return new ConversationGraphWrapper({
       graph,
-      inworldSTTNode,
+      assemblyAINode: assemblyAISTTNode,
     });
   }
 }

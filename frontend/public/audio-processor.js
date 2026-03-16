@@ -1,6 +1,6 @@
 /**
  * AudioWorklet processor for capturing and resampling microphone audio
- * Buffers to 100ms chunks (1600 samples at 16kHz) for the Inworld STT backend
+ * Buffers to 100ms chunks (1600 samples at 16kHz) to meet AssemblyAI requirements
  * Outputs Float32 audio (backend handles conversion to PCM16)
  */
 class AudioProcessor extends AudioWorkletProcessor {
@@ -14,7 +14,7 @@ class AudioProcessor extends AudioWorkletProcessor {
     this.inputBuffer = null;
 
     // Output buffer to collect 100ms of resampled audio (1600 samples at 16kHz)
-    // 100ms chunks provide good granularity for energy-based VAD
+    // AssemblyAI requires chunks between 50-1000ms
     this.outputBuffer = [];
     this.outputBufferSize = 1600; // 100ms at 16kHz
   }

@@ -1,6 +1,6 @@
 /**
  * TranscriptExtractorNode extracts transcript information from
- * DataStreamWithMetadata (output from InworldSTTNode) and converts
+ * DataStreamWithMetadata (output from AssemblyAISTTNode) and converts
  * it to InteractionInfo for downstream processing.
  */
 

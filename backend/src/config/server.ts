@@ -5,29 +5,31 @@
  * Environment variables can override defaults where appropriate.
  */
 
-export interface InworldSTTSettings {
-  silenceThresholdMs: number;
-  minSpeechMs: number;
-  silenceEnergyThreshold: number;
+export interface AssemblyAITurnDetectionSettings {
+  endOfTurnConfidenceThreshold: number;
+  minEndOfTurnSilenceWhenConfident: number;
+  maxTurnSilence: number;
   description: string;
 }
 
-export type InworldSTTEagerness = 'low' | 'medium' | 'high';
+export type AssemblyAIEagerness = 'low' | 'medium' | 'high';
 
 /**
- * Inworld STT VAD presets controlling how eagerly the system ends a turn.
- * These mirror the former AssemblyAI turn-detection presets so existing
- * environment-variable overrides (INWORLD_STT_EAGERNESS) behave predictably.
+ * AssemblyAI turn detection presets based on their documentation
+ * @see https://www.assemblyai.com/docs/speech-to-text/universal-streaming/turn-detection
  */
-const inworldSTTPresets: Record<InworldSTTEagerness, InworldSTTSettings> = {
+const assemblyAIPresets: Record<
+  AssemblyAIEagerness,
+  AssemblyAITurnDetectionSettings
+> = {
   /**
    * Aggressive - Quick responses for rapid back-and-forth
    * Use cases: Agent Assist, IVR replacements, Retail/E-commerce, Telecom
    */
   high: {
-    silenceThresholdMs: 400,
-    minSpeechMs: 100,
-    silenceEnergyThreshold: 0.01,
+    endOfTurnConfidenceThreshold: 0.4,
+    minEndOfTurnSilenceWhenConfident: 160,
+    maxTurnSilence: 400,
     description:
       'Aggressive - Quick responses for rapid back-and-forth (IVR, order confirmations)',
   },
@@ -37,9 +39,9 @@ const inworldSTTPresets: Record<InworldSTTEagerness, InworldSTTSettings> = {
    * Use cases: Customer Support, Tech Support, Financial Services, Travel
    */
   medium: {
-    silenceThresholdMs: 700,
-    minSpeechMs: 150,
-    silenceEnergyThreshold: 0.01,
+    endOfTurnConfidenceThreshold: 0.4,
+    minEndOfTurnSilenceWhenConfident: 400,
+    maxTurnSilence: 1280,
     description:
       'Balanced - Natural middle ground for most conversational turns',
   },
@@ -49,9 +51,9 @@ const inworldSTTPresets: Record<InworldSTTEagerness, InworldSTTSettings> = {
    * Use cases: Healthcare, Mental Health, Sales, Legal, Language Learning
    */
   low: {
-    silenceThresholdMs: 1000,
-    minSpeechMs: 200,
-    silenceEnergyThreshold: 0.01,
+    endOfTurnConfidenceThreshold: 0.7,
+    minEndOfTurnSilenceWhenConfident: 800,
+    maxTurnSilence: 3600,
     description:
       'Conservative - Patient, allows thinking pauses (Language Learning, Healthcare)',
   },
@@ -74,12 +76,14 @@ export const serverConfig = {
   },
 
   /**
-   * Inworld STT configuration
+   * AssemblyAI speech-to-text configuration
    */
-  inworldSTT: {
-    /** VAD eagerness level */
-    eagerness: (process.env.INWORLD_STT_EAGERNESS ||
-      'high') as InworldSTTEagerness,
+  assemblyAI: {
+    /** Turn detection eagerness level */
+    eagerness: (process.env.ASSEMBLY_AI_EAGERNESS ||
+      'high') as AssemblyAIEagerness,
+    /** Format turns in output (typically false for real-time processing) */
+    formatTurns: false,
   },
 
   /**
@@ -92,18 +96,18 @@ export const serverConfig = {
 } as const;
 
 /**
- * Get Inworld STT VAD settings for the configured eagerness level
+ * Get AssemblyAI turn detection settings for the configured eagerness level
  */
-export function getInworldSTTSettings(): InworldSTTSettings {
-  return inworldSTTPresets[serverConfig.inworldSTT.eagerness];
+export function getAssemblyAISettings(): AssemblyAITurnDetectionSettings {
+  return assemblyAIPresets[serverConfig.assemblyAI.eagerness];
 }
 
 /**
- * Get Inworld STT VAD settings for a specific eagerness level
+ * Get AssemblyAI turn detection settings for a specific eagerness level
  * @param eagerness - The eagerness level ('low' | 'medium' | 'high')
  */
-export function getInworldSTTSettingsForEagerness(
-  eagerness: InworldSTTEagerness
-): InworldSTTSettings {
-  return inworldSTTPresets[eagerness];
+export function getAssemblyAISettingsForEagerness(
+  eagerness: AssemblyAIEagerness
+): AssemblyAITurnDetectionSettings {
+  return assemblyAIPresets[eagerness];
 }

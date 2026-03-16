@@ -56,30 +56,16 @@ export class FlashcardProcessor {
   async generateFlashcards(
     messages: ConversationMessage[],
     count: number = 1,
-    userContext?: UserContextInterface,
-    languageCodeOverride?: string
+    userContext?: UserContextInterface
   ): Promise<Flashcard[]> {
     const executor = getFlashcardGraph();
-
-    // Use override language if provided (snapshotted from processing start time),
-    // otherwise fall back to processor's current language
-    const effectiveLanguageCode = languageCodeOverride || this.languageCode;
-    const effectiveLanguageConfig = languageCodeOverride
-      ? getLanguageConfig(languageCodeOverride)
-      : this.languageConfig;
 
     // Generate flashcards in parallel
     const promises: Promise<Flashcard>[] = [];
 
     for (let i = 0; i < count; i++) {
       promises.push(
-        this.generateSingleFlashcard(
-          executor,
-          messages,
-          userContext,
-          effectiveLanguageCode,
-          effectiveLanguageConfig
-        )
+        this.generateSingleFlashcard(executor, messages, userContext)
       );
     }
 
@@ -104,17 +90,13 @@ export class FlashcardProcessor {
   private async generateSingleFlashcard(
     executor: Graph,
     messages: ConversationMessage[],
-    userContext?: UserContextInterface,
-    effectiveLanguageCode?: string,
-    effectiveLanguageConfig?: LanguageConfig
+    userContext?: UserContextInterface
   ): Promise<Flashcard> {
-    const langCode = effectiveLanguageCode || this.languageCode;
-    const langConfig = effectiveLanguageConfig || this.languageConfig;
     try {
       const input = {
         studentName: 'Student',
-        teacherName: langConfig.teacherPersona.name,
-        target_language: langConfig.name,
+        teacherName: this.languageConfig.teacherPersona.name,
+        target_language: this.languageConfig.name,
         messages: messages,
         flashcards: this.existingFlashcards,
       };
@@ -137,7 +119,7 @@ export class FlashcardProcessor {
       const flashcard = finalData as unknown as Flashcard;
 
       // Add language code to the flashcard
-      flashcard.languageCode = langCode;
+      flashcard.languageCode = this.languageCode;
 
       // Check if this is a duplicate
       const isDuplicate = this.existingFlashcards.some(
@@ -156,7 +138,7 @@ export class FlashcardProcessor {
           example: '',
           mnemonic: '',
           timestamp: new Date().toISOString(),
-          languageCode: langCode,
+          languageCode: this.languageCode,
         } as Flashcard & { error?: string };
       }
 
@@ -170,7 +152,7 @@ export class FlashcardProcessor {
         example: '',
         mnemonic: '',
         timestamp: new Date().toISOString(),
-        languageCode: langCode,
+        languageCode: this.languageCode,
       } as Flashcard & { error?: string };
     }
   }

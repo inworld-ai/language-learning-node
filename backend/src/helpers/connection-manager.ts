@@ -4,7 +4,7 @@
  * This replaces the AudioProcessor for Inworld Runtime 0.9.
  * Key differences from AudioProcessor:
  * - Uses MultimodalStreamManager to feed audio to a long-running graph
- * - VAD is handled inside the graph by InworldSTTNode (energy-based silence detection)
+ * - VAD is handled inside the graph by AssemblyAI (not external Silero)
  * - Graph runs continuously for the session duration
  */
 
@@ -48,31 +48,22 @@ export class ConnectionManager {
   private readonly RESTART_COOLDOWN_MS = 5000; // Prevent rapid restart loops
   private readonly RESTART_RESET_THRESHOLD_MS = 30000; // Reset attempts after stable operation
 
-  // Callback for flashcard processing (conversationId + languageCode captured at trigger time)
+  // Callback for flashcard processing
   private flashcardCallback:
-    | ((
-        messages: Array<{ role: string; content: string }>,
-        conversationId: string | null,
-        languageCode: string
-      ) => Promise<void>)
+    | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
     | null = null;
 
-  // Callback for feedback generation (conversationId + languageCode captured at trigger time)
+  // Callback for feedback generation
   private feedbackCallback:
     | ((
         messages: Array<{ role: string; content: string }>,
-        currentTranscript: string,
-        conversationId: string | null,
-        languageCode: string
+        currentTranscript: string
       ) => Promise<void>)
     | null = null;
 
-  // Callback for memory creation (conversationId captured at trigger time)
+  // Callback for memory creation
   private memoryCallback:
-    | ((
-        messages: Array<{ role: string; content: string }>,
-        conversationId: string | null
-      ) => Promise<void>)
+    | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
     | null = null;
 
   // User ID for memory retrieval/creation
@@ -81,11 +72,6 @@ export class ConnectionManager {
   // Processing state tracking for utterance stitching
   private isProcessingResponse: boolean = false;
   private currentTranscript: string = '';
-
-  // Snapshots captured when processing started, used to detect stale triggers
-  // and to ensure flashcard/feedback generation uses the correct language
-  private processingConversationId: string | null = null;
-  private processingLanguageCode: string | null = null;
 
   constructor(
     sessionId: string,
@@ -540,7 +526,7 @@ export class ConnectionManager {
   }
 
   /**
-   * Handle speech detected event from Inworld STT
+   * Handle speech detected event from AssemblyAI
    */
   private handleSpeechDetected(interactionId: string): void {
     this.logger.debug({ interactionId }, 'speech_detected');
@@ -578,7 +564,7 @@ export class ConnectionManager {
   }
 
   /**
-   * Handle partial transcript from Inworld STT
+   * Handle partial transcript from AssemblyAI
    */
   private handlePartialTranscript(text: string, interactionId: string): void {
     this.sendToClient({
@@ -654,8 +640,6 @@ export class ConnectionManager {
   private markProcessingStart(transcript: string): void {
     this.isProcessingResponse = true;
     this.currentTranscript = transcript;
-    this.processingConversationId = this.conversationId;
-    this.processingLanguageCode = this.languageCode;
   }
 
   /**
@@ -684,18 +668,9 @@ export class ConnectionManager {
    */
   private triggerFlashcardGeneration(): void {
     if (!this.flashcardCallback) return;
-    if (this.conversationId !== this.processingConversationId) {
-      this.logger.info('skipping_flashcard_generation_conversation_changed');
-      return;
-    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
-
-    // Capture state now - don't rely on reading mutable fields after async work
-    const snapshotConversationId = this.processingConversationId;
-    const snapshotLanguageCode =
-      this.processingLanguageCode || this.languageCode;
 
     const recentMessages = connection.state.messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
@@ -705,11 +680,7 @@ export class ConnectionManager {
       }));
 
     // Track pending flashcard generation
-    this.pendingFlashcardGeneration = this.flashcardCallback(
-      recentMessages,
-      snapshotConversationId,
-      snapshotLanguageCode
-    )
+    this.pendingFlashcardGeneration = this.flashcardCallback(recentMessages)
       .catch((error) => {
         this.logger.error({ err: error }, 'flashcard_generation_trigger_error');
       })
@@ -723,10 +694,6 @@ export class ConnectionManager {
    */
   private triggerFeedbackGeneration(): void {
     if (!this.feedbackCallback) return;
-    if (this.conversationId !== this.processingConversationId) {
-      this.logger.info('skipping_feedback_generation_conversation_changed');
-      return;
-    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
@@ -739,11 +706,6 @@ export class ConnectionManager {
 
     if (!lastUserMessage) return;
 
-    // Capture state now - don't rely on reading mutable fields after async work
-    const snapshotConversationId = this.processingConversationId;
-    const snapshotLanguageCode =
-      this.processingLanguageCode || this.languageCode;
-
     const recentMessages = messages
       .slice(-RECENT_MESSAGES_FOR_FLASHCARDS)
       .map((m) => ({
@@ -754,9 +716,7 @@ export class ConnectionManager {
     // Track pending feedback generation
     this.pendingFeedbackGeneration = this.feedbackCallback(
       recentMessages,
-      lastUserMessage.content,
-      snapshotConversationId,
-      snapshotLanguageCode
+      lastUserMessage.content
     )
       .catch((error) => {
         this.logger.error({ err: error }, 'feedback_generation_trigger_error');
@@ -772,16 +732,9 @@ export class ConnectionManager {
    */
   private triggerMemoryGeneration(): void {
     if (!this.memoryCallback) return;
-    if (this.conversationId !== this.processingConversationId) {
-      this.logger.info('skipping_memory_generation_conversation_changed');
-      return;
-    }
 
     const connection = this.connections[this.sessionId];
     if (!connection) return;
-
-    // Capture conversationId now - don't rely on reading it later after async work
-    const snapshotConversationId = this.processingConversationId;
 
     const recentMessages = connection.state.messages
       .slice(-RECENT_MESSAGES_FOR_MEMORY)
@@ -791,10 +744,7 @@ export class ConnectionManager {
       }));
 
     // Track pending memory generation
-    this.pendingMemoryGeneration = this.memoryCallback(
-      recentMessages,
-      snapshotConversationId
-    )
+    this.pendingMemoryGeneration = this.memoryCallback(recentMessages)
       .catch((error) => {
         this.logger.error({ err: error }, 'memory_generation_trigger_error');
       })
@@ -809,9 +759,7 @@ export class ConnectionManager {
 
   setFlashcardCallback(
     callback: (
-      messages: Array<{ role: string; content: string }>,
-      conversationId: string | null,
-      languageCode: string
+      messages: Array<{ role: string; content: string }>
     ) => Promise<void>
   ): void {
     this.flashcardCallback = callback;
@@ -820,9 +768,7 @@ export class ConnectionManager {
   setFeedbackCallback(
     callback: (
       messages: Array<{ role: string; content: string }>,
-      currentTranscript: string,
-      conversationId: string | null,
-      languageCode: string
+      currentTranscript: string
     ) => Promise<void>
   ): void {
     this.feedbackCallback = callback;
@@ -830,8 +776,7 @@ export class ConnectionManager {
 
   setMemoryCallback(
     callback: (
-      messages: Array<{ role: string; content: string }>,
-      conversationId: string | null
+      messages: Array<{ role: string; content: string }>
     ) => Promise<void>
   ): void {
     this.memoryCallback = callback;
@@ -999,10 +944,10 @@ export class ConnectionManager {
     conversationId: string,
     languageCode: string,
     messages: Array<{ role: string; content: string; timestamp?: string }>
-  ): Promise<boolean> {
+  ): Promise<void> {
     if (this.isSwitchingConversation) {
       this.logger.warn('conversation_switch_already_in_progress');
-      return false;
+      return;
     }
 
     this.isSwitchingConversation = true;
@@ -1046,7 +991,6 @@ export class ConnectionManager {
         { conversationId, languageCode, messageCount: messages.length },
         'conversation_switched'
       );
-      return true;
     } finally {
       this.isSwitchingConversation = false;
     }
@@ -1084,6 +1028,9 @@ export class ConnectionManager {
 
     // End the multimodal stream
     this.multimodalStreamManager.end();
+
+    // Close AssemblyAI session
+    await this.graphWrapper.assemblyAINode.closeSession(this.sessionId);
 
     // Remove from connections map
     delete this.connections[this.sessionId];
