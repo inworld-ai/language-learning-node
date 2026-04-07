@@ -80,7 +80,8 @@ type AppAction =
   | { type: 'REMOVE_CONVERSATION'; payload: string }
   | { type: 'RENAME_CONVERSATION'; payload: { id: string; title: string } }
   | { type: 'SET_USER_ID'; payload: string | null }
-  | { type: 'SET_SWITCHING_CONVERSATION'; payload: boolean };
+  | { type: 'SET_SWITCHING_CONVERSATION'; payload: boolean }
+  | { type: 'SET_SYNC_COMPLETE'; payload: boolean };
 
 // Initial state
 const createInitialState = (storage: HybridStorage): AppState => {
@@ -118,6 +119,7 @@ const createInitialState = (storage: HybridStorage): AppState => {
     currentConversationId: null,
     sidebarOpen: false,
     switchingConversation: false,
+    syncComplete: false,
   };
 };
 
@@ -243,6 +245,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, userId: action.payload };
     case 'SET_SWITCHING_CONVERSATION':
       return { ...state, switchingConversation: action.payload };
+    case 'SET_SYNC_COMPLETE':
+      return { ...state, syncComplete: action.payload };
     default:
       return state;
   }
@@ -295,6 +299,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const ttsAudioPlayerRef = useRef(ttsAudioPlayerInstance);
   const hasMigratedRef = useRef(false);
   const conversationsLoadedRef = useRef(false);
+  const isSyncingRef = useRef(false);
 
   const [state, dispatch] = useReducer(
     appReducer,
@@ -331,6 +336,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
         // First try to sync ALL conversations FROM Supabase (existing user on new device)
         // Then migrate any local data TO Supabase
+        isSyncingRef.current = true;
         storage
           .syncAllConversationsFromSupabase()
           .then((allConversations) => {
@@ -363,15 +369,25 @@ export function AppProvider({ children }: AppProviderProps) {
             // Also migrate any local data that isn't in Supabase yet
             return storage.migrateToSupabase(langsToSync);
           })
-          .catch(console.error);
+          .then(() => {
+            isSyncingRef.current = false;
+            dispatch({ type: 'SET_SYNC_COMPLETE', payload: true });
+          })
+          .catch((err) => {
+            console.error(err);
+            isSyncingRef.current = false;
+            dispatch({ type: 'SET_SYNC_COMPLETE', payload: true });
+          });
       }
     } else {
       // Clear userId on logout
       dispatch({ type: 'SET_USER_ID', payload: null });
+      dispatch({ type: 'SET_SYNC_COMPLETE', payload: false });
 
       storage.clearSupabaseClient();
       hasMigratedRef.current = false;
       conversationsLoadedRef.current = false;
+      isSyncingRef.current = false;
     }
   }, [supabase, user]);
 
@@ -426,6 +442,9 @@ export function AppProvider({ children }: AppProviderProps) {
 
   // Save chat history to current conversation when it changes
   useEffect(() => {
+    // Skip saving while syncing from Supabase to avoid overwriting timestamps
+    if (isSyncingRef.current) return;
+
     const storage = storageRef.current;
     const currentId = stateRef.current.currentConversationId;
     const currentLang = stateRef.current.currentLanguage;

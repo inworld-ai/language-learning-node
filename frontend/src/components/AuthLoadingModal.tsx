@@ -32,9 +32,9 @@ export function AuthLoadingModal() {
     return undefined;
   }, [user]);
 
-  // Dismiss when conversations have loaded (state.conversations changes after sync)
+  // Dismiss when Supabase sync is actually complete
   useEffect(() => {
-    if (visible && user && state.conversations.length > 0) {
+    if (visible && user && state.syncComplete) {
       // Small delay so the UI doesn't flash
       const timer = setTimeout(() => {
         setVisible(false);
@@ -43,7 +43,7 @@ export function AuthLoadingModal() {
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [visible, user, state.conversations]);
+  }, [visible, user, state.syncComplete]);
 
   return (
     <AppModal visible={visible}>

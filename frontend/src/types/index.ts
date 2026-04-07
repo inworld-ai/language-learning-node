@@ -169,6 +169,9 @@ export interface AppState {
   currentConversationId: string | null;
   sidebarOpen: boolean;
   switchingConversation: boolean;
+
+  // Supabase sync status
+  syncComplete: boolean;
 }
 
 // Outgoing WebSocket message
