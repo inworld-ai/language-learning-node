@@ -1,22 +1,18 @@
 /**
- * AudioWorklet processor for capturing and resampling microphone audio
- * Buffers to 100ms chunks (1600 samples at 16kHz) to meet AssemblyAI requirements
- * Outputs Float32 audio (backend handles conversion to PCM16)
+ * AudioWorklet processor for capturing and resampling microphone audio.
+ * Resamples to 24kHz PCM16 for Inworld Realtime API.
+ * Buffers to 100ms chunks (2400 samples at 24kHz).
  */
 class AudioProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     this.sourceSampleRate = options.processorOptions.sourceSampleRate;
-    this.targetSampleRate = 16000;
+    this.targetSampleRate = 24000;
     this.resampleRatio = this.sourceSampleRate / this.targetSampleRate;
 
-    // Input buffer for resampling
     this.inputBuffer = null;
-
-    // Output buffer to collect 100ms of resampled audio (1600 samples at 16kHz)
-    // AssemblyAI requires chunks between 50-1000ms
     this.outputBuffer = [];
-    this.outputBufferSize = 1600; // 100ms at 16kHz
+    this.outputBufferSize = 2400; // 100ms at 24kHz
   }
 
   process(inputs) {
@@ -32,9 +28,9 @@ class AudioProcessor extends AudioWorkletProcessor {
     newBuffer.set(inputChannel, currentLength);
     this.inputBuffer = newBuffer;
 
-    // Resample to 16kHz
+    // Resample to 24kHz
     const numOutputSamples = Math.floor(
-      this.inputBuffer.length / this.resampleRatio
+      this.inputBuffer.length / this.resampleRatio,
     );
     if (numOutputSamples === 0) return true;
 
@@ -56,14 +52,15 @@ class AudioProcessor extends AudioWorkletProcessor {
     const consumedInputSamples = numOutputSamples * this.resampleRatio;
     this.inputBuffer = this.inputBuffer.slice(Math.round(consumedInputSamples));
 
-    // Add Float32 samples to output buffer
+    // Convert to Int16 and buffer to 100ms chunks
     for (let i = 0; i < resampledData.length; i++) {
-      this.outputBuffer.push(resampledData[i]);
+      this.outputBuffer.push(
+        Math.max(-32768, Math.min(32767, resampledData[i] * 32768)),
+      );
 
-      // When we have 100ms of audio (1600 samples), send it as Float32
       if (this.outputBuffer.length >= this.outputBufferSize) {
-        const float32Array = new Float32Array(this.outputBuffer);
-        this.port.postMessage(float32Array.buffer, [float32Array.buffer]);
+        const int16Array = new Int16Array(this.outputBuffer);
+        this.port.postMessage(int16Array.buffer, [int16Array.buffer]);
         this.outputBuffer = [];
       }
     }

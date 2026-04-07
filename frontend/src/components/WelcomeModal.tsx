@@ -1,0 +1,66 @@
+import { useState, useEffect } from 'react';
+import { AppModal } from './AppModal';
+
+const DISMISSED_KEY = 'welcome-dismissed';
+
+export function WelcomeModal() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!sessionStorage.getItem(DISMISSED_KEY)) {
+      setVisible(true);
+    }
+  }, []);
+
+  function dismiss() {
+    setVisible(false);
+    sessionStorage.setItem(DISMISSED_KEY, '1');
+  }
+
+  return (
+    <AppModal visible={visible} onDismiss={dismiss}>
+      <h2 className="welcome-title">Inworld Language Tutor</h2>
+      <p className="welcome-description">
+        Practice speaking with an AI language tutor powered by{' '}
+        <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer">
+          Inworld AI
+        </a>
+        . Get real-time feedback, build vocabulary with flashcards, and have
+        natural conversations — all by voice.
+      </p>
+      <div className="welcome-features">
+        <div className="welcome-feature">
+          <span>Voice conversations</span>
+        </div>
+        <div className="welcome-feature">
+          <span>Grammar feedback</span>
+        </div>
+        <div className="welcome-feature">
+          <span>Auto flashcards</span>
+        </div>
+        <div className="welcome-feature">
+          <span>6 languages</span>
+        </div>
+      </div>
+      <div className="welcome-links">
+        <a
+          href="https://github.com/inworld-ai/language-learning-node"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open source on GitHub
+        </a>
+        <a
+          href="https://render.com/deploy?repo=https://github.com/inworld-ai/language-learning-node"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Deploy to Render
+        </a>
+      </div>
+      <button className="welcome-cta" onClick={dismiss}>
+        Get Started
+      </button>
+    </AppModal>
+  );
+}

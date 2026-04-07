@@ -5,7 +5,8 @@
  */
 
 import { Router } from 'express';
-import { AnkiExporter } from '../helpers/anki-exporter.js';
+import { AnkiExporter, ExportableFlashcard } from '../helpers/anki-exporter.js';
+import { generateBatchTTSAudio } from '../helpers/tts-audio-generator.js';
 import {
   getLanguageOptions,
   DEFAULT_LANGUAGE_CODE,
@@ -17,7 +18,7 @@ export const apiRouter = Router();
 // ANKI export endpoint
 apiRouter.post('/export-anki', async (req, res) => {
   try {
-    const { flashcards, deckName, languageCode: _languageCode } = req.body;
+    const { flashcards, deckName, languageCode } = req.body;
 
     if (!flashcards || !Array.isArray(flashcards) || flashcards.length === 0) {
       res.status(400).json({ error: 'No flashcards provided' });
@@ -25,17 +26,48 @@ apiRouter.post('/export-anki', async (req, res) => {
     }
 
     const exporter = new AnkiExporter();
-    const validCount = exporter.countValidFlashcards(flashcards);
+    const validCount = exporter.countValidFlashcards(
+      flashcards as ExportableFlashcard[]
+    );
 
     if (validCount === 0) {
       res.status(400).json({ error: 'No valid flashcards to export' });
       return;
     }
 
-    const defaultDeckName = `Inworld Language Tutor Spanish Cards`;
+    const lang = languageCode || DEFAULT_LANGUAGE_CODE;
+    const texts: string[] = [];
+
+    for (const fc of flashcards as ExportableFlashcard[]) {
+      const word = (fc.targetWord || '').trim();
+      if (word) texts.push(word);
+
+      const sentence = (fc.example || '').trim();
+      if (sentence) texts.push(sentence);
+    }
+
+    const uniqueTexts = [...new Set(texts)];
+
+    logger.info(
+      { textCount: uniqueTexts.length, languageCode: lang },
+      'anki_export_generating_audio'
+    );
+
+    const audioMap = await generateBatchTTSAudio(uniqueTexts, lang);
+
+    logger.info(
+      {
+        audioCount: audioMap.size,
+        requestedTexts: uniqueTexts.length,
+      },
+      'anki_export_audio_generation_complete'
+    );
+
+    const defaultDeckName = 'Language Tutor Cards';
     const apkgBuffer = await exporter.exportFlashcards(
-      flashcards,
-      deckName || defaultDeckName
+      flashcards as ExportableFlashcard[],
+      deckName || defaultDeckName,
+      audioMap
     );
 
     res.setHeader('Content-Type', 'application/octet-stream');
@@ -61,9 +93,4 @@ apiRouter.get('/languages', (_req, res) => {
   }
 });
 
-// Health check endpoint for Cloud Run
-apiRouter.get('/health', (_req, res) => {
-  res
-    .status(200)
-    .json({ status: 'healthy', timestamp: new Date().toISOString() });
-});
+// Note: Health check is at the root level (/health) in server.ts

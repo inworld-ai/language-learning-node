@@ -183,7 +183,7 @@ export class AudioHandler {
       1
     );
 
-    const targetSampleRate = 16000;
+    const targetSampleRate = 24000;
     const sourceSampleRate = this.audioContext.sampleRate;
     const resampleRatio = sourceSampleRate / targetSampleRate;
     let buffer: Float32Array | null = null;

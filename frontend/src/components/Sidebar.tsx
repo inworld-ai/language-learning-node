@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 
 export function Sidebar() {
@@ -55,6 +55,21 @@ export function Sidebar() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close sidebar on Escape key
+  const handleEscapeKey = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && sidebarOpen) {
+        toggleSidebar();
+      }
+    },
+    [sidebarOpen, toggleSidebar]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [handleEscapeKey]);
 
   const handleLanguageSelect = (langCode: string) => {
     if (langCode !== uiLanguage) {
@@ -145,6 +160,7 @@ export function Sidebar() {
             className="sidebar-close-button"
             onClick={toggleSidebar}
             title="Close sidebar"
+            aria-label="Close sidebar"
           >
             <svg
               width="20"

@@ -1,14 +1,10 @@
 /**
- * Language Learning Server - Inworld Runtime 0.9
+ * Language Learning Server — Inworld Realtime API
  *
- * This server uses a long-running circular graph with AssemblyAI for VAD/STT.
- * Key components:
- * - ConversationGraphWrapper: The main graph that processes audio → STT → LLM → TTS
- * - ConnectionManager: Manages WebSocket connections and feeds audio to the graph
- * - FlashcardProcessor: Generates flashcards from conversations
+ * Uses @inworld/agents + @openai/agents/realtime for speech-to-speech.
+ * Each WebSocket client gets a RealtimeSession that handles STT + LLM + TTS.
  */
 
-// Load environment variables FIRST
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -22,16 +18,8 @@ import { WebSocketServer } from 'ws';
 
 import { serverConfig } from './config/server.js';
 import { serverLogger as logger } from './utils/logger.js';
-
-// Import services
-import { initTelemetry } from './services/telemetry.js';
-import {
-  initializeGraph,
-  exportGraphConfigs,
-} from './services/graph-service.js';
 import { setupWebSocketHandlers } from './services/websocket-handler.js';
 import { apiRouter } from './services/api-routes.js';
-import { createGracefulShutdown } from './services/shutdown.js';
 
 // Initialize Express and servers
 const app = express();
@@ -42,13 +30,12 @@ const wss = new WebSocketServer({ server, maxPayload: 10 * 1024 * 1024 });
 app.use(express.json({ limit: '1mb' }));
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    origin: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+      : '*',
     methods: ['GET', 'POST', 'OPTIONS'],
-  })
+  }),
 );
-
-// Initialize telemetry
-initTelemetry();
 
 // API routes
 app.use('/api', apiRouter);
@@ -63,10 +50,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 
 if (fs.existsSync(path.join(frontendDistPath, 'index.html'))) {
-  // Serve static assets
   app.use(express.static(frontendDistPath));
-
-  // SPA fallback - serve index.html for non-API routes
   app.get('*', (_req, res) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
@@ -101,23 +85,31 @@ wss.on('close', () => {
 });
 
 // Server startup
-async function startServer(): Promise<void> {
-  try {
-    await initializeGraph();
-    await exportGraphConfigs();
-    server.listen(serverConfig.port, () => {
-      logger.info({ port: serverConfig.port }, 'server_started');
-      logger.info('using_inworld_runtime_0.9_with_assemblyai_stt');
-    });
-  } catch (error) {
-    logger.fatal({ err: error }, 'server_start_failed');
-    process.exit(1);
-  }
-}
-
-startServer();
+server.listen(serverConfig.port, () => {
+  logger.info({ port: serverConfig.port }, 'server_started');
+  logger.info('using_inworld_realtime_api');
+});
 
 // Graceful shutdown
-const gracefulShutdown = createGracefulShutdown(server, wss);
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+function gracefulShutdown(signal: string) {
+  logger.info({ signal }, 'shutdown_signal_received');
+  clearInterval(heartbeatInterval);
+
+  wss.clients.forEach((ws) => {
+    ws.close(1001, 'Server shutting down');
+  });
+
+  server.close(() => {
+    logger.info('server_closed');
+    process.exit(0);
+  });
+
+  // Force exit after 10s
+  setTimeout(() => {
+    logger.warn('forced_shutdown');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

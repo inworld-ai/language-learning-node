@@ -65,7 +65,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     flag: '🇺🇸',
     sttLanguageCode: 'en-US',
     ttsConfig: {
-      speakerId: 'Ashley',
+      speakerId: 'Lauren',
       modelId: 'inworld-tts-1.5-max',
       speakingRate: 1,
       temperature: 1.1,

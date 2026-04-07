@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useReducer,
@@ -6,6 +6,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  type Dispatch,
   type ReactNode,
 } from 'react';
 import type {
@@ -250,7 +251,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 // Context type
 interface AppContextType {
   state: AppState;
-  dispatch: React.Dispatch<AppAction>;
+  dispatch: Dispatch<AppAction>;
   storage: HybridStorage;
   wsClient: WebSocketClient;
   audioHandler: AudioHandler;
@@ -602,9 +603,7 @@ export function AppProvider({ children }: AppProviderProps) {
     const pending = pendingFlashcardsRef.current;
 
     if (pending.length > 0) {
-      console.log(
-        `[AppContext] Processing ${pending.length} pending flashcards for conversation ${conversationId}`
-      );
+      // Process queued flashcards now that conversation exists
       const updatedFlashcards = storage.addFlashcardsForConversation(
         conversationId,
         pending,
@@ -633,7 +632,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
   // Handle interrupt
   const handleInterrupt = useCallback(() => {
-    console.log('[AppContext] Handling interrupt');
+    // Handle interrupt - stop audio and freeze partial response
     const audioPlayer = audioPlayerRef.current;
     audioPlayer.stop();
 
@@ -704,10 +703,7 @@ export function AppProvider({ children }: AppProviderProps) {
         !payload.conversationId ||
         payload.conversationId === stateRef.current.currentConversationId
       ) {
-        dispatch({
-          type: 'SET_CURRENT_TRANSCRIPT',
-          payload: payload.text || '',
-        });
+        // Don't clear transcript here — keep any existing partial showing
         dispatch({ type: 'SET_SPEECH_DETECTED', payload: true });
         handleInterruptRef.current();
       }
@@ -729,10 +725,8 @@ export function AppProvider({ children }: AppProviderProps) {
     });
 
     wsClient.on('speech_ended', () => {
-      if (!stateRef.current.pendingTranscription) {
-        dispatch({ type: 'SET_CURRENT_TRANSCRIPT', payload: '' });
-        dispatch({ type: 'SET_SPEECH_DETECTED', payload: false });
-      }
+      // Don't clear the transcript on speech_ended — keep showing the partial
+      // until the final transcription event arrives. Clearing here causes flicker.
     });
 
     wsClient.on('transcription', (data) => {
@@ -746,13 +740,12 @@ export function AppProvider({ children }: AppProviderProps) {
       ) {
         audioPlayer.stop();
 
-        dispatch({ type: 'SET_CURRENT_TRANSCRIPT', payload: '' });
-        dispatch({ type: 'SET_SPEECH_DETECTED', payload: false });
-
         // If the last message was sent via text input, ignore this transcription event
         // because the user message was already added in sendTextMessage
         if (lastMessageWasTextRef.current) {
           lastMessageWasTextRef.current = false;
+          dispatch({ type: 'SET_CURRENT_TRANSCRIPT', payload: '' });
+          dispatch({ type: 'SET_SPEECH_DETECTED', payload: false });
           // Still need to check for LLM response and update conversation
           if (
             pendingLLMResponseRef.current &&
@@ -776,8 +769,11 @@ export function AppProvider({ children }: AppProviderProps) {
           return;
         }
 
-        // This is an audio-based transcription - set pending transcription
+        // Set pending BEFORE clearing current — prevents flicker
+        // (one render cycle where both are empty would hide the bubble)
         dispatch({ type: 'SET_PENDING_TRANSCRIPTION', payload: text });
+        dispatch({ type: 'SET_CURRENT_TRANSCRIPT', payload: '' });
+        dispatch({ type: 'SET_SPEECH_DETECTED', payload: false });
 
         if (
           pendingLLMResponseRef.current &&
@@ -925,9 +921,7 @@ export function AppProvider({ children }: AppProviderProps) {
       ) {
         if (reason === 'continuation_detected') {
           // User is continuing their utterance - discard partial response silently
-          console.log(
-            '[AppContext] Continuation detected - discarding partial response'
-          );
+          // Continuation detected - discard partial response
           audioPlayer.stop();
           // Don't save the partial response - just reset streaming state
           dispatch({ type: 'RESET_STREAMING_STATE' });
@@ -946,16 +940,14 @@ export function AppProvider({ children }: AppProviderProps) {
         removedCount: number;
         conversationId?: string;
       };
-      const { messages, removedCount, conversationId } = payload;
+      const { messages, conversationId } = payload;
 
       // Only process if it's for the current conversation
       if (
         !conversationId ||
         conversationId === stateRef.current.currentConversationId
       ) {
-        console.log(
-          `[AppContext] Conversation rollback - removed ${removedCount} messages`
-        );
+        // Conversation rollback from server
 
         // Convert backend format to frontend format
         const chatHistory = messages.map((m) => ({
@@ -1015,9 +1007,7 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       } else {
         // No conversation yet - queue flashcards for later processing
-        console.log(
-          `[AppContext] Queuing ${Array.isArray(cards) ? cards.length : 0} flashcards (no conversation yet)`
-        );
+        // Queue flashcards until conversation is created
         pendingFlashcardsRef.current = [
           ...pendingFlashcardsRef.current,
           ...(Array.isArray(cards) ? cards : []),
@@ -1117,9 +1107,7 @@ export function AppProvider({ children }: AppProviderProps) {
       // Hide loading screen
       dispatch({ type: 'SET_SWITCHING_CONVERSATION', payload: false });
 
-      console.log(
-        `Conversation ${conversationId} ready with language ${languageCode}`
-      );
+      // Conversation ready
     });
 
     // Connect

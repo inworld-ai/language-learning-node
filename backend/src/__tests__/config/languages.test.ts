@@ -20,7 +20,7 @@ describe('languages config', () => {
       const config = getLanguageConfig('en');
       expect(config.code).toBe('en');
       expect(config.name).toBe('English');
-      expect(config.ttsConfig.speakerId).toBe('Ashley');
+      expect(config.ttsConfig.speakerId).toBe('Lauren');
     });
 
     it('returns French config for "fr"', () => {
