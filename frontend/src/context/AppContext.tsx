@@ -1319,7 +1319,7 @@ export function AppProvider({ children }: AppProviderProps) {
         const messages = stateRef.current.chatHistory.map((m) => ({
           role: m.role === 'learner' ? 'user' : 'assistant',
           content: m.content,
-          timestamp: new Date().toISOString(),
+          timestamp: m.timestamp || new Date().toISOString(),
           feedback: m.feedback,
         })) as import('../types').ConversationMessage[];
         storage.saveConversation(
@@ -1487,7 +1487,7 @@ export function AppProvider({ children }: AppProviderProps) {
       const messages = stateRef.current.chatHistory.map((m) => ({
         role: m.role === 'learner' ? 'user' : 'assistant',
         content: m.content,
-        timestamp: new Date().toISOString(),
+        timestamp: m.timestamp || new Date().toISOString(),
         feedback: m.feedback,
       })) as import('../types').ConversationMessage[];
       storage.saveConversation(

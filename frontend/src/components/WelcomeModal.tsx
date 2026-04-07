@@ -26,7 +26,14 @@ export function WelcomeModal() {
           Inworld AI
         </a>
         . Get real-time feedback, build vocabulary with flashcards, and have
-        natural conversations — all by voice.
+        natural conversations — all by voice. The app is{' '}
+        <a href="https://github.com/inworld-ai/language-learning-node" target="_blank" rel="noopener noreferrer">
+          open source
+        </a>{' '}
+        and easily deployable on{' '}
+        <a href="https://render.com/deploy?repo=https://github.com/inworld-ai/language-learning-node" target="_blank" rel="noopener noreferrer">
+          Render
+        </a>.
       </p>
       <div className="welcome-features">
         <div className="welcome-feature">
@@ -41,22 +48,6 @@ export function WelcomeModal() {
         <div className="welcome-feature">
           <span>6 languages</span>
         </div>
-      </div>
-      <div className="welcome-links">
-        <a
-          href="https://github.com/inworld-ai/language-learning-node"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Open source on GitHub
-        </a>
-        <a
-          href="https://render.com/deploy?repo=https://github.com/inworld-ai/language-learning-node"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Deploy to Render
-        </a>
       </div>
       <button className="welcome-cta" onClick={dismiss}>
         Get Started
