@@ -4,8 +4,6 @@
  * Defines interfaces for user memories - used for personalized conversations.
  */
 
-import type { State } from './index.js';
-
 /**
  * Type of memory content
  * - learning_progress: Info about user's language learning (vocabulary, grammar, struggles)
@@ -81,14 +79,6 @@ export interface MemoryRetrievalInput {
   queryText: string;
   limit?: number;
   threshold?: number;
-}
-
-/**
- * Extended state with relevant memories attached
- * Used by MemoryRetrievalNode and DialogPromptBuilderNode
- */
-export interface StateWithMemories extends State {
-  relevantMemories?: MemoryMatch[];
 }
 
 /**

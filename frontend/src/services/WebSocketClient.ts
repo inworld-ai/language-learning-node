@@ -62,10 +62,6 @@ export class WebSocketClient {
 
   private emit(event: string, data?: unknown): void {
     const callbacks = this.listeners.get(event);
-    console.log(
-      `[WebSocketClient] emit('${event}'), listeners:`,
-      callbacks?.length ?? 0
-    );
     if (callbacks) {
       callbacks.forEach((callback) => callback(data));
     }
@@ -198,6 +194,7 @@ export class WebSocketClient {
       case 'transcription':
         this.emit('transcription', {
           text: message.text,
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
@@ -224,6 +221,7 @@ export class WebSocketClient {
         this.emit('feedback_generated', {
           messageContent: message.messageContent,
           feedback: message.feedback,
+          conversationId: message.conversationId,
         });
         break;
 
@@ -247,6 +245,7 @@ export class WebSocketClient {
         this.emit('partial_transcript', {
           text: message.text,
           interactionId: message.interactionId,
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
@@ -254,6 +253,7 @@ export class WebSocketClient {
       case 'llm_response_chunk':
         this.emit('llm_response_chunk', {
           text: message.text,
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
@@ -261,6 +261,7 @@ export class WebSocketClient {
       case 'llm_response_complete':
         this.emit('llm_response_complete', {
           text: message.text,
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
@@ -270,24 +271,30 @@ export class WebSocketClient {
           audio: message.audio,
           audioFormat: message.audioFormat || 'int16',
           sampleRate: message.sampleRate,
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
 
       case 'audio_stream_complete':
         this.emit('audio_stream_complete', {
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
 
       case 'interrupt':
-        this.emit('interrupt', { reason: message.reason });
+        this.emit('interrupt', {
+          reason: message.reason,
+          conversationId: message.conversationId,
+        });
         break;
 
       case 'conversation_rollback':
         this.emit('conversation_rollback', {
           messages: message.messages,
           removedCount: message.removedCount,
+          conversationId: message.conversationId,
           timestamp: message.timestamp,
         });
         break;
@@ -322,6 +329,10 @@ export class WebSocketClient {
           conversationId: message.conversationId,
           languageCode: message.languageCode,
         });
+        break;
+
+      case 'pong':
+        // Expected keepalive response — no action needed
         break;
 
       default:
@@ -359,7 +370,7 @@ export class WebSocketClient {
     this.pingInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.send({ type: 'ping' });
-        console.log('[WebSocketClient] Ping sent to keep connection alive');
+        // Keepalive ping — silent
       }
     }, 30000);
   }

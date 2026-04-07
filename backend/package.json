@@ -1,16 +1,13 @@
 {
   "name": "language-learning",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "build": "tsc && cp -r src/prompts dist/prompts",
+    "build": "tsc",
     "start": "node dist/server.js",
     "dev": "nodemon --exec \"tsx src/server.ts\" --ext ts",
-    "test-stt": "tsx test-stt.ts",
-    "test": "npm run test:backend && npm run test:frontend",
-    "test:backend": "vitest run --config vitest.config.ts",
-    "test:frontend": "npm run test --prefix ../frontend",
+    "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -22,11 +19,11 @@
     "inworld",
     "ai",
     "language-learning",
-    "spanish"
+    "realtime"
   ],
   "author": "Inworld AI",
   "license": "MIT",
-  "description": "Learn Spanish with AI",
+  "description": "Language learning with Inworld Realtime API",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
@@ -45,14 +42,12 @@
     "nodemon": "^3.1.10",
     "pino-pretty": "^13.1.3",
     "prettier": "^3.2.5",
-    "supabase": "^2.70.5",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.0.0",
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "@inworld/runtime": "https://storage.googleapis.com/assets-inworld-ai/node-packages/inworld-runtime-0.9.0-rc.14.tgz",
     "@supabase/supabase-js": "^2.89.0",
     "anki-apkg-export": "^4.0.3",
     "cors": "^2.8.5",

@@ -118,6 +118,7 @@ export function ChatSection() {
           id="micButton"
           onClick={toggleRecording}
           disabled={!isConnected}
+          aria-label={isRecording ? 'Stop recording' : 'Start recording'}
         >
           <svg
             width="24"
@@ -160,14 +161,18 @@ export function ChatSection() {
             <Message key={`msg-${index}`} message={message} />
           ))}
 
-          {/* Real-time transcript (while speaking) */}
-          {speechDetected && isRecording && !pendingTranscription && (
+          {/* User transcript — single stable element for both partial and final */}
+          {(currentTranscript ||
+            pendingTranscription ||
+            (speechDetected && isRecording)) && (
             <div
               className="message learner streaming realtime"
               id="realtime-transcript"
             >
-              <span className="transcript-text">{currentTranscript}</span>
-              {!currentTranscript && (
+              <span className="transcript-text">
+                {pendingTranscription || currentTranscript}
+              </span>
+              {!currentTranscript && !pendingTranscription && (
                 <span className="loading-dots">
                   <span></span>
                   <span></span>
@@ -177,24 +182,17 @@ export function ChatSection() {
             </div>
           )}
 
-          {/* Pending user transcription (final) - no typewriter, shown immediately */}
-          {pendingTranscription && (
-            <PendingTranscription text={pendingTranscription} />
-          )}
-
           {/* Streaming LLM response */}
           {streamingLLMResponse && (
             <StreamingMessage text={streamingLLMResponse} />
           )}
-        </div>
-        <div className="current-transcript" id="currentTranscript">
-          {currentTranscript}
         </div>
         <form className="text-input-form" onSubmit={handleTextSubmit}>
           <input
             type="text"
             className="text-input"
             placeholder="Type a message..."
+            aria-label="Type a message"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -224,14 +222,5 @@ export function ChatSection() {
         </form>
       </div>
     </section>
-  );
-}
-
-// Simple component to show finalized user transcription (no typewriter effect)
-function PendingTranscription({ text }: { text: string }) {
-  return (
-    <div className="message learner" id="pending-transcription">
-      {text}
-    </div>
   );
 }

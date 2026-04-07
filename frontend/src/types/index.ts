@@ -53,7 +53,10 @@ export interface Flashcard {
   targetWord: string;
   english: string;
   example: string;
+  exampleTranslation?: string;
   mnemonic: string;
+  pinyin?: string;
+  examplePinyin?: string;
   timestamp?: string;
   languageCode?: string;
   conversationId?: string;
@@ -166,6 +169,9 @@ export interface AppState {
   currentConversationId: string | null;
   sidebarOpen: boolean;
   switchingConversation: boolean;
+
+  // Supabase sync status
+  syncComplete: boolean;
 }
 
 // Outgoing WebSocket message

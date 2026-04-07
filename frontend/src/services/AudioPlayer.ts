@@ -4,6 +4,7 @@ type EventCallback = () => void;
 
 export class AudioPlayer {
   private audioContext: AudioContext | null = null;
+  private gainNode: GainNode | null = null;
   private audioQueue: AudioBuffer[] = [];
   private isPlaying = false;
   private isStartingPlayback = false;
@@ -15,8 +16,9 @@ export class AudioPlayer {
   private nextStartTime: number = 0;
   private scheduledSources: AudioBufferSourceNode[] = [];
   private scheduleInterval: ReturnType<typeof setInterval> | null = null;
-  private readonly SCHEDULE_AHEAD_TIME = 0.1; // Look 100ms ahead
-  private readonly FADE_SAMPLES = 128; // ~2.7ms at 48kHz, ~8ms at 16kHz
+  private readonly SCHEDULE_AHEAD_TIME = 0.1;
+  /** Duration in seconds for fade-in/fade-out via GainNode */
+  private readonly FADE_DURATION = 0.015; // 15ms — smooth enough to kill clicks
 
   constructor() {
     this.isIOS =
@@ -43,8 +45,13 @@ export class AudioPlayer {
     }
   }
 
-  async initialize(): Promise<void> {
+  async initialize(_sampleRate?: number): Promise<void> {
     try {
+      // Do NOT pass sampleRate to AudioContext — let it use the hardware's
+      // native rate (typically 48 kHz). Forcing a non-native rate (e.g. 24 kHz)
+      // makes the browser resample *all* output, which can introduce artifacts.
+      // Instead, each AudioBuffer declares its own sample rate via createBuffer()
+      // and the AudioContext resamples per-buffer transparently.
       this.audioContext = new (
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
@@ -55,10 +62,12 @@ export class AudioPlayer {
         await this.audioContext.resume();
       }
 
-      console.log(
-        'Audio player initialized with sample rate:',
-        this.audioContext.sampleRate
-      );
+      // Create a GainNode for smooth fade-in/out — all audio routes through this
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = 0; // Start silent
+      this.gainNode.connect(this.audioContext.destination);
+
+      // Audio player initialized
     } catch (error) {
       console.error('Failed to initialize audio player:', error);
       throw error;
@@ -72,7 +81,6 @@ export class AudioPlayer {
     audioFormat: 'int16' | 'float32' = 'int16'
   ): Promise<void> {
     if (!base64Audio || base64Audio.length === 0) {
-      console.warn('Empty audio data received');
       return;
     }
 
@@ -102,32 +110,47 @@ export class AudioPlayer {
     }
 
     // Standard implementation
-    if (!this.audioContext) {
-      await this.initialize();
+    if (!this.audioContext || !this.gainNode) {
+      await this.initialize(sampleRate);
     }
 
     try {
       // Decode base64 to binary
       const binaryString = atob(base64Audio);
-      const bytes = new Uint8Array(binaryString.length);
+      let bytes = new Uint8Array(binaryString.length);
 
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
 
-      // Create audio buffer
+      // Strip WAV header if present — Inworld may include a 44-byte RIFF/WAV
+      // header on each audio chunk. Interpreting it as PCM samples causes clicks.
+      if (
+        bytes.length > 44 &&
+        bytes[0] === 0x52 &&
+        bytes[1] === 0x49 &&
+        bytes[2] === 0x46 &&
+        bytes[3] === 0x46
+      ) {
+        bytes = bytes.slice(44);
+      }
+
+      // Create audio buffer (no per-chunk fade — GainNode handles envelope)
       const audioBuffer = await this.createAudioBuffer(
-        bytes.buffer,
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength
+        ),
         sampleRate,
         audioFormat
       );
-      this.applyFadeEnvelope(audioBuffer);
 
       this.audioQueue.push(audioBuffer);
 
       // Start playback immediately if not already playing
       if (!this.isPlaying && !this.isStartingPlayback) {
         this.isStartingPlayback = true;
+        this.fadeIn();
         this.startScheduleInterval();
         requestAnimationFrame(() => {
           this.isStartingPlayback = false;
@@ -150,20 +173,9 @@ export class AudioPlayer {
 
     let numSamples: number;
 
-    console.log(
-      `[AudioPlayer] createAudioBuffer: format=${audioFormat}, byteLength=${arrayBuffer.byteLength}, sampleRate=${sampleRate}`
-    );
-
     if (audioFormat === 'float32') {
       const float32Array = new Float32Array(arrayBuffer);
       numSamples = float32Array.length;
-      console.log(
-        `[AudioPlayer] Float32 samples: ${numSamples}, first 3 values: [${Array.from(
-          float32Array.slice(0, 3)
-        )
-          .map((v) => v.toFixed(4))
-          .join(', ')}]`
-      );
 
       const audioBuffer = this.audioContext.createBuffer(
         1,
@@ -181,7 +193,6 @@ export class AudioPlayer {
       // Int16 PCM format
       const int16Array = new Int16Array(arrayBuffer);
       numSamples = int16Array.length;
-      console.log(`[AudioPlayer] Int16 samples: ${numSamples}`);
 
       const audioBuffer = this.audioContext.createBuffer(
         1,
@@ -198,21 +209,28 @@ export class AudioPlayer {
     }
   }
 
-  private applyFadeEnvelope(audioBuffer: AudioBuffer): void {
-    const channelData = audioBuffer.getChannelData(0);
-    const length = channelData.length;
-    const fadeLength = Math.min(this.FADE_SAMPLES, Math.floor(length / 4));
+  /** Fade gain from 0 → 1 over FADE_DURATION */
+  private fadeIn(): void {
+    if (!this.audioContext || !this.gainNode) return;
+    const now = this.audioContext.currentTime;
+    this.gainNode.gain.cancelScheduledValues(now);
+    this.gainNode.gain.setValueAtTime(0, now);
+    this.gainNode.gain.linearRampToValueAtTime(1, now + this.FADE_DURATION);
+  }
 
-    // Fade-in at start
-    for (let i = 0; i < fadeLength; i++) {
-      const gain = i / fadeLength;
-      channelData[i] *= gain;
+  /** Fade gain from current → 0 over FADE_DURATION, then call callback */
+  private fadeOut(callback?: () => void): void {
+    if (!this.audioContext || !this.gainNode) {
+      callback?.();
+      return;
     }
+    const now = this.audioContext.currentTime;
+    this.gainNode.gain.cancelScheduledValues(now);
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.linearRampToValueAtTime(0, now + this.FADE_DURATION);
 
-    // Fade-out at end
-    for (let i = 0; i < fadeLength; i++) {
-      const gain = i / fadeLength;
-      channelData[length - 1 - i] *= gain;
+    if (callback) {
+      setTimeout(callback, this.FADE_DURATION * 1000 + 5);
     }
   }
 
@@ -223,16 +241,11 @@ export class AudioPlayer {
 
     const currentTime = this.audioContext.currentTime;
 
-    // Handle queue underrun with safety margin
+    // Handle queue underrun — schedule immediately, no gap.
+    // Adding a margin (e.g. 5ms) introduces an audible click at the boundary.
+    // Reference: Inworld Studio uses Math.max(nextPlayTime, ctx.currentTime).
     if (this.nextStartTime < currentTime) {
-      const underrunAmount = currentTime - this.nextStartTime;
-      if (underrunAmount > 0.05) {
-        console.warn(
-          `[AudioPlayer] Queue underrun: ${(underrunAmount * 1000).toFixed(1)}ms behind`
-        );
-      }
-      // Add small margin to ensure we're not scheduling in the past
-      this.nextStartTime = currentTime + 0.005;
+      this.nextStartTime = currentTime;
     }
 
     // Schedule buffers that should start within SCHEDULE_AHEAD_TIME
@@ -247,11 +260,12 @@ export class AudioPlayer {
   }
 
   private scheduleBuffer(audioBuffer: AudioBuffer, startTime: number): void {
-    if (!this.audioContext) return;
+    if (!this.audioContext || !this.gainNode) return;
 
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(this.audioContext.destination);
+    // Route through GainNode instead of directly to destination
+    source.connect(this.gainNode);
 
     this.scheduledSources.push(source);
 
@@ -262,17 +276,17 @@ export class AudioPlayer {
       }
 
       if (this.scheduledSources.length === 0 && this.audioQueue.length === 0) {
-        this.isPlaying = false;
-        this.stopScheduleInterval();
-        this.emit('playback_finished');
+        // Fade out at the natural end of playback to prevent a click
+        this.fadeOut(() => {
+          this.isPlaying = false;
+          this.stopScheduleInterval();
+          this.emit('playback_finished');
+        });
       }
     };
 
     try {
       source.start(startTime);
-      console.log(
-        `Scheduled buffer: ${audioBuffer.duration.toFixed(3)}s at ${startTime.toFixed(3)}`
-      );
 
       if (!this.isPlaying) {
         this.isPlaying = true;
@@ -301,7 +315,21 @@ export class AudioPlayer {
     }
   }
 
+  /** Signal that no more audio chunks will arrive for this stream */
+  markStreamComplete(): void {
+    this.endStreaming();
+  }
+
   stop(): void {
+    this.stopInternal(false);
+  }
+
+  /** Stop immediately with no fade — used for user interruption */
+  stopImmediate(): void {
+    this.stopInternal(true);
+  }
+
+  private stopInternal(immediate: boolean): void {
     // Clear stream timeout
     if (this.streamTimeout) {
       clearTimeout(this.streamTimeout);
@@ -317,36 +345,47 @@ export class AudioPlayer {
       return;
     }
 
-    // Standard implementation
-    this.stopScheduleInterval();
+    const killSources = () => {
+      this.stopScheduleInterval();
 
-    // Stop all scheduled sources
-    for (const source of this.scheduledSources) {
-      try {
-        source.stop();
-        source.disconnect();
-      } catch {
-        // Source may have already ended
+      for (const source of this.scheduledSources) {
+        try {
+          source.stop();
+          source.disconnect();
+        } catch {
+          // Source may have already ended
+        }
       }
-    }
-    this.scheduledSources = [];
-    this.nextStartTime = 0;
+      this.scheduledSources = [];
+      this.nextStartTime = 0;
 
-    if (this.currentSource) {
-      try {
-        this.currentSource.stop();
-        this.currentSource.disconnect();
-        this.currentSource = null;
-      } catch (error) {
-        console.warn('Error stopping audio source:', error);
+      if (this.currentSource) {
+        try {
+          this.currentSource.stop();
+          this.currentSource.disconnect();
+          this.currentSource = null;
+        } catch (error) {
+          console.warn('Error stopping audio source:', error);
+        }
       }
-    }
 
-    // Clear audio queue to prevent any queued audio from playing
-    this.audioQueue = [];
-    this.isPlaying = false;
-    this.isStartingPlayback = false;
-    this.emit('playback_stopped');
+      this.audioQueue = [];
+      this.isPlaying = false;
+      this.isStartingPlayback = false;
+      this.emit('playback_stopped');
+    };
+
+    if (immediate) {
+      // Kill instantly — set gain to 0 with no ramp
+      if (this.gainNode && this.audioContext) {
+        this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+        this.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      }
+      killSources();
+    } else {
+      // Graceful fade out
+      this.fadeOut(killSources);
+    }
   }
 
   destroy(): void {
@@ -357,33 +396,28 @@ export class AudioPlayer {
       this.audioContext.close();
       this.audioContext = null;
     }
+    this.gainNode = null;
 
     this.listeners.clear();
   }
 
   private endStreaming(): void {
-    console.log('[AudioPlayer] Stream ended, finalizing audio playback');
-
     if (this.streamTimeout) {
       clearTimeout(this.streamTimeout);
       this.streamTimeout = null;
     }
 
-    if (this.isIOS && this.iosHandler) {
-      this.iosHandler.playAudioChunk?.('', true);
+    // If sources are still scheduled, onended handlers will fade out + emit.
+    // If nothing is playing or queued, emit finished immediately.
+    if (this.scheduledSources.length === 0 && this.audioQueue.length === 0) {
+      if (this.isPlaying) {
+        this.fadeOut(() => {
+          this.isPlaying = false;
+          this.stopScheduleInterval();
+          this.emit('playback_finished');
+        });
+      }
     }
-  }
-
-  markStreamComplete(): void {
-    console.log('[AudioPlayer] Stream marked as complete by backend');
-    this.endStreaming();
-  }
-
-  getQueueLength(): number {
-    return this.audioQueue.length;
-  }
-
-  isPlaybackActive(): boolean {
-    return this.isPlaying;
+    // Otherwise: let the last source's onended handle cleanup.
   }
 }

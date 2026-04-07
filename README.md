@@ -5,7 +5,7 @@
 [![Documentation](https://img.shields.io/badge/Documentation-Read_Docs-blue)](https://docs.inworld.ai/docs/node/overview)
 [![Model Providers](https://img.shields.io/badge/Model_Providers-See_Models-purple)](https://docs.inworld.ai/docs/models#llm)
 
-A conversational language learning app powered by Inworld AI Runtime. Practice speaking with an AI tutor, get real-time feedback on your responses, and build vocabulary with auto-generated flashcards.
+A conversational language learning app powered by Inworld AI's Realtime API. Practice speaking with an AI tutor, get real-time feedback on your responses, and build vocabulary with auto-generated flashcards.
 
 ![App](screenshot.jpg)
 
@@ -13,8 +13,7 @@ A conversational language learning app powered by Inworld AI Runtime. Practice s
 
 - Node.js (v20 or higher)
 - npm
-- An Inworld AI account and API key
-- An AssemblyAI account and API key (for speech-to-text)
+- An [Inworld AI](https://platform.inworld.ai/) account and API key
 
 ## Get Started
 
@@ -39,13 +38,11 @@ Create a `backend/.env` file:
 
 ```bash
 INWORLD_API_KEY=your_inworld_base64_key
-ASSEMBLY_AI_API_KEY=your_assemblyai_key
 ```
 
-| Service        | Get Key From                                        | Purpose                           |
-| -------------- | --------------------------------------------------- | --------------------------------- |
-| **Inworld**    | [platform.inworld.ai](https://platform.inworld.ai/) | AI conversations (Base64 API key) |
-| **AssemblyAI** | [assemblyai.com](https://www.assemblyai.com/)       | Speech-to-text                    |
+| Service     | Get Key From                                          | Purpose                    |
+| ----------- | ----------------------------------------------------- | -------------------------- |
+| **Inworld** | [platform.inworld.ai](https://platform.inworld.ai/)  | Realtime voice AI (Base64) |
 
 ### Step 4: Run the Application
 
@@ -108,26 +105,20 @@ Find these in: Supabase Dashboard > Settings > API
 language-learning-node/
 ├── backend/
 │   ├── src/
-│   │   ├── __tests__/        # Backend unit tests
-│   │   ├── config/           # Language, LLM & server configuration
-│   │   ├── graphs/           # Inworld Runtime conversation graphs
-│   │   │   ├── configs/      # Graph JSON configurations
-│   │   │   └── nodes/        # Custom graph nodes
-│   │   ├── helpers/          # Audio utils, connection management
-│   │   ├── prompts/          # Nunjucks prompt templates
-│   │   ├── services/         # Server components (WS handler, API routes)
+│   │   ├── __tests__/        # Backend unit tests (60 tests)
+│   │   ├── config/           # Language, server & Supabase configuration
+│   │   ├── helpers/          # Anki exporter, TTS audio generator
+│   │   ├── services/         # Session manager, WS handler, LLM, memory
 │   │   ├── types/            # TypeScript types
 │   │   ├── utils/            # Logger
 │   │   └── server.ts         # Entry point
 │   └── vitest.config.ts      # Backend test config
 ├── frontend/
 │   ├── src/
-│   │   ├── __tests__/        # Frontend unit tests
-│   │   ├── components/       # React components
-│   │   ├── config/           # Language configuration
-│   │   ├── context/          # App state & auth
+│   │   ├── components/       # React components (Chat, Flashcard, Sidebar, etc.)
+│   │   ├── context/          # App state & auth (AppContext, AuthContext)
 │   │   ├── hooks/            # Custom React hooks
-│   │   ├── services/         # WebSocket client, audio, storage
+│   │   ├── services/         # WebSocket client, audio player/handler, storage
 │   │   ├── styles/           # CSS
 │   │   └── types/            # TypeScript types
 │   └── vitest.config.ts      # Frontend test config
@@ -141,20 +132,22 @@ language-learning-node/
 
 The app uses a real-time audio streaming architecture:
 
-1. **Frontend** captures microphone audio and streams it via WebSocket
-2. **Backend** processes audio through an Inworld Runtime graph:
-   - AssemblyAI handles speech-to-text with voice activity detection
-   - LLM generates contextual responses in the target language
-   - TTS converts responses back to audio
-3. **Flashcards** are auto-generated from conversation vocabulary
+1. **Frontend** captures microphone audio (24kHz PCM16) and streams it via WebSocket
+2. **Backend** proxies audio to an **Inworld Realtime WebSocket** session that handles:
+   - Speech-to-text (AssemblyAI u3-rt-pro via Inworld) with language hints
+   - LLM response generation (GPT-4.1-nano via Inworld LLM Router)
+   - Text-to-speech with language-specific voices
+3. **Flashcards** are auto-generated from conversation vocabulary via the Inworld LLM Router
 4. **Response feedback** provides grammar and usage corrections
+5. **Anki export** generates `.apkg` files with embedded TTS pronunciation audio
 
 ## Memory System
 
-When Supabase is configured, the app stores and retrieves user memories using semantic search:
+When Supabase is configured, the app stores and retrieves user memories:
 
-- **Automatic memory creation**: Every few conversation turns, the system extracts memorable facts
-- **Semantic retrieval**: Relevant memories are retrieved using vector similarity search (pgvector)
+- **Automatic memory creation**: Every few conversation turns, the system extracts memorable facts via LLM
+- **5-turn sliding window**: Recent conversation context is injected into session instructions (non-blocking)
+- **Semantic retrieval**: Relevant memories retrieved using vector similarity search (pgvector)
 - **Personalized responses**: The AI uses retrieved memories to personalize conversations
 
 Memory types:
@@ -164,36 +157,36 @@ Memory types:
 
 Without Supabase, the app works in anonymous mode using localStorage (no memory persistence).
 
+## Supported Languages
+
+English, Spanish, French, German, Italian, Portuguese — each with a dedicated teacher persona and voice.
+
 ## Environment Variables Reference
 
-| Variable                    | Required | Description                                                        |
-| --------------------------- | -------- | ------------------------------------------------------------------ |
-| `INWORLD_API_KEY`           | Yes      | Inworld AI Base64 API key                                          |
-| `ASSEMBLY_AI_API_KEY`       | Yes      | AssemblyAI API key                                                 |
-| `PORT`                      | No       | Server port (default: 3000)                                        |
-| `LOG_LEVEL`                 | No       | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default: info) |
-| `NODE_ENV`                  | No       | Set to `production` for production log format                      |
-| `ASSEMBLY_AI_EAGERNESS`     | No       | Turn detection: `low`, `medium`, `high` (default: high)            |
-| `SUPABASE_URL`              | No       | Supabase project URL (enables memory feature)                      |
-| `SUPABASE_SECRET_KEY`       | No       | Supabase secret key (for backend memory storage)                   |
+| Variable              | Required | Description                                                        |
+| --------------------- | -------- | ------------------------------------------------------------------ |
+| `INWORLD_API_KEY`     | Yes      | Inworld AI Base64 API key                                          |
+| `PORT`                | No       | Server port (default: 3000)                                        |
+| `LOG_LEVEL`           | No       | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default: info) |
+| `VAD_EAGERNESS`       | No       | Turn detection: `low`, `medium`, `high` (default: low)             |
+| `SUPABASE_URL`        | No       | Supabase project URL (enables memory feature)                      |
+| `SUPABASE_SECRET_KEY` | No       | Supabase secret key (for backend memory storage)                   |
 
 ## Testing
 
 ```bash
-# Run all tests (backend + frontend)
-npm test --prefix backend
+# Run all backend tests
+cd backend && npx vitest run
 
-# Backend tests only
-npm run test:backend --prefix backend
+# Watch mode
+cd backend && npx vitest
 
-# Frontend tests only
-npm test --prefix frontend
-
-# Watch mode (backend)
-npm run test:watch --prefix backend
+# Type check
+cd backend && npx tsc --noEmit
+cd frontend && npx tsc --noEmit
 ```
 
-Tests cover critical paths: audio conversion, language configuration, storage persistence, and flashcard deduplication.
+Tests cover: session management, LLM integration, turn memory, language configuration, WebSocket handler wiring, and STT event handling.
 
 ## Troubleshooting
 

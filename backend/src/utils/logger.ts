@@ -52,7 +52,3 @@ export function createSessionLogger(
 
 // Pre-created module loggers for common components
 export const serverLogger = createLogger('Server');
-export const graphLogger = createLogger('Graph');
-export const connectionLogger = createLogger('ConnectionManager');
-export const flashcardLogger = createLogger('FlashcardProcessor');
-export const feedbackLogger = createLogger('FeedbackProcessor');

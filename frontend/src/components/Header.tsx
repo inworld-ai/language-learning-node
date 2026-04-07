@@ -121,9 +121,6 @@ export function Header() {
                 <div className="header-auth-loading">Loading...</div>
               ) : user ? (
                 <div className="header-auth-user">
-                  <span className="header-auth-email" title={user.email}>
-                    {user.email}
-                  </span>
                   <button
                     className="header-sign-out-button"
                     onClick={handleSignOut}
