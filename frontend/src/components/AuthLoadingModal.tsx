@@ -4,47 +4,44 @@ import { useApp } from '../context/AppContext';
 import { AppModal, ModalSpinner } from './AppModal';
 
 export function AuthLoadingModal() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { state } = useApp();
   const [visible, setVisible] = useState(false);
-  const prevUserRef = useRef<string | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFirstRender = useRef(true);
+  /** Once auth finishes initial load, we start watching for sign-in actions */
+  const authSettled = useRef(false);
+  const prevUserId = useRef<string | null>(null);
 
-  // Show modal only on actual sign-in (not initial page load with persisted session)
   useEffect(() => {
+    // Wait for auth to finish its initial session check
+    if (isLoading) return;
+
     const currentUserId = user?.id ?? null;
 
-    if (isFirstRender.current) {
-      // First render: just record the initial auth state, don't show modal
-      isFirstRender.current = false;
-      prevUserRef.current = currentUserId;
-      return undefined;
+    if (!authSettled.current) {
+      // Auth just settled for the first time — this is page load, not a sign-in
+      authSettled.current = true;
+      prevUserId.current = currentUserId;
+      return;
     }
 
-    const prevUserId = prevUserRef.current;
-    prevUserRef.current = currentUserId;
-
-    // Show loading when user actually signs in (not on page load)
-    if (!prevUserId && currentUserId) {
+    // After auth has settled, detect actual sign-in (null → userId)
+    if (!prevUserId.current && currentUserId) {
       setVisible(true);
       maxTimerRef.current = setTimeout(() => setVisible(false), 10000);
-      return () => {
-        if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
-      };
     }
 
-    // Hide on sign out
-    if (prevUserId && !currentUserId) {
+    // Sign out
+    if (prevUserId.current && !currentUserId) {
       setVisible(false);
     }
 
-    return undefined;
-  }, [user]);
+    prevUserId.current = currentUserId;
+  }, [user, isLoading]);
 
-  // Dismiss when Supabase sync is actually complete
+  // Dismiss when Supabase sync completes
   useEffect(() => {
-    if (visible && user && state.syncComplete) {
+    if (visible && state.syncComplete) {
       const timer = setTimeout(() => {
         setVisible(false);
         if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
@@ -52,7 +49,7 @@ export function AuthLoadingModal() {
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [visible, user, state.syncComplete]);
+  }, [visible, state.syncComplete]);
 
   return (
     <AppModal visible={visible}>
