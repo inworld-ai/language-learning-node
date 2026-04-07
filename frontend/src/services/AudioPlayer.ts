@@ -314,6 +314,15 @@ export class AudioPlayer {
   }
 
   stop(): void {
+    this.stopInternal(false);
+  }
+
+  /** Stop immediately with no fade — used for user interruption */
+  stopImmediate(): void {
+    this.stopInternal(true);
+  }
+
+  private stopInternal(immediate: boolean): void {
     // Clear stream timeout
     if (this.streamTimeout) {
       clearTimeout(this.streamTimeout);
@@ -329,8 +338,7 @@ export class AudioPlayer {
       return;
     }
 
-    // Fade out then stop all sources — avoids click on abrupt stop
-    this.fadeOut(() => {
+    const killSources = () => {
       this.stopScheduleInterval();
 
       for (const source of this.scheduledSources) {
@@ -358,7 +366,19 @@ export class AudioPlayer {
       this.isPlaying = false;
       this.isStartingPlayback = false;
       this.emit('playback_stopped');
-    });
+    };
+
+    if (immediate) {
+      // Kill instantly — set gain to 0 with no ramp
+      if (this.gainNode && this.audioContext) {
+        this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+        this.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      }
+      killSources();
+    } else {
+      // Graceful fade out
+      this.fadeOut(killSources);
+    }
   }
 
   destroy(): void {

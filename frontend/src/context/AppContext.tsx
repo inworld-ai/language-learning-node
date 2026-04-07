@@ -632,9 +632,9 @@ export function AppProvider({ children }: AppProviderProps) {
 
   // Handle interrupt
   const handleInterrupt = useCallback(() => {
-    // Handle interrupt - stop audio and freeze partial response
+    // Handle interrupt - stop audio IMMEDIATELY and freeze partial response
     const audioPlayer = audioPlayerRef.current;
-    audioPlayer.stop();
+    audioPlayer.stopImmediate();
 
     const currentState = stateRef.current;
     if (currentState.streamingLLMResponse?.trim()) {
