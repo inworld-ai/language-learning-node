@@ -33,7 +33,7 @@ describe('WebSocket handler turn callbacks', () => {
 
     vi.spyOn(llm, 'generateFlashcard').mockResolvedValue(flashcardResult);
     vi.spyOn(llm, 'generateFeedback').mockResolvedValue(
-      'Good attempt! Remember to use "años" with the ñ.',
+      'Good attempt! Remember to use "años" with the ñ.'
     );
 
     const messages = [
@@ -56,13 +56,15 @@ describe('WebSocket handler turn callbacks', () => {
 
     const previousFeedback: string[] = [];
 
-    const feedbackSpy = vi.spyOn(llm, 'generateFeedback').mockResolvedValue('First feedback.');
+    const feedbackSpy = vi
+      .spyOn(llm, 'generateFeedback')
+      .mockResolvedValue('First feedback.');
 
     await llm.generateFeedback(
       [{ role: 'user', content: 'test1' }],
       'test1',
       'Spanish',
-      previousFeedback,
+      previousFeedback
     );
 
     previousFeedback.push('First feedback.');
@@ -72,7 +74,7 @@ describe('WebSocket handler turn callbacks', () => {
       [{ role: 'user', content: 'test2' }],
       'test2',
       'Spanish',
-      previousFeedback,
+      previousFeedback
     );
 
     expect(feedbackSpy).toHaveBeenCalledTimes(2);

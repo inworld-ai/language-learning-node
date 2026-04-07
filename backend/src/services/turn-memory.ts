@@ -50,7 +50,7 @@ export class TurnMemory {
     // Fire-and-forget: persist to Supabase every 3 turns
     if (this.turns.length > 0 && this.turns.length % 3 === 0) {
       this.persistAsync().catch((err) =>
-        logger.warn({ err }, 'memory_persist_failed'),
+        logger.warn({ err }, 'memory_persist_failed')
       );
     }
   }
@@ -59,9 +59,7 @@ export class TurnMemory {
   getContext(): string {
     if (this.turns.length === 0) return '';
 
-    return this.turns
-      .map((t) => `${t.role}: ${t.content}`)
-      .join('\n');
+    return this.turns.map((t) => `${t.role}: ${t.content}`).join('\n');
   }
 
   /** Retrieve relevant memories from Supabase for the current query */
@@ -102,7 +100,7 @@ export class TurnMemory {
     await this.memoryService.generateAndStore(
       this.userId,
       recentMessages,
-      this.languageCode,
+      this.languageCode
     );
   }
 }

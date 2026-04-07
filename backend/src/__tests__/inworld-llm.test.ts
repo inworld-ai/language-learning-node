@@ -26,17 +26,20 @@ describe('InworldLLM', () => {
     it('should return a flashcard from valid LLM response', async () => {
       vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
-        json: async () => chatResponse(JSON.stringify({
-          targetWord: 'perro',
-          english: 'dog',
-          example: 'El perro es grande.',
-          mnemonic: 'Sounds like "pair-oh" — a pair of paws!',
-        })),
+        json: async () =>
+          chatResponse(
+            JSON.stringify({
+              targetWord: 'perro',
+              english: 'dog',
+              example: 'El perro es grande.',
+              mnemonic: 'Sounds like "pair-oh" — a pair of paws!',
+            })
+          ),
       } as Response);
 
       const card = await llm.generateFlashcard(
         [{ role: 'assistant', content: 'El perro es muy grande.' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(card).not.toBeNull();
@@ -73,7 +76,7 @@ describe('InworldLLM', () => {
 
       const card = await llm.generateFlashcard(
         [{ role: 'assistant', content: 'Hola' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(card).toBeNull();
@@ -87,7 +90,7 @@ describe('InworldLLM', () => {
 
       const card = await llm.generateFlashcard(
         [{ role: 'assistant', content: 'Hola' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(card).toBeNull();
@@ -101,7 +104,7 @@ describe('InworldLLM', () => {
 
       const card = await llm.generateFlashcard(
         [{ role: 'assistant', content: 'Hola' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(card).toBeNull();
@@ -113,7 +116,7 @@ describe('InworldLLM', () => {
 
       const card = await noKeyLlm.generateFlashcard(
         [{ role: 'assistant', content: 'Hola' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(card).toBeNull();
@@ -124,7 +127,7 @@ describe('InworldLLM', () => {
 
       const card = await llm.generateFlashcard(
         [{ role: 'assistant', content: 'Hola' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(card).toBeNull();
@@ -135,9 +138,10 @@ describe('InworldLLM', () => {
     it('should return feedback string', async () => {
       vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
-        json: async () => chatResponse(
-          'Use "tienes" instead of "tienws" for correct conjugation.',
-        ),
+        json: async () =>
+          chatResponse(
+            'Use "tienes" instead of "tienws" for correct conjugation.'
+          ),
       } as Response);
 
       const feedback = await llm.generateFeedback(
@@ -147,7 +151,7 @@ describe('InworldLLM', () => {
         ],
         'cuantos anos tienws',
         'Spanish',
-        [],
+        []
       );
 
       expect(feedback).toContain('tienes');
@@ -163,11 +167,13 @@ describe('InworldLLM', () => {
         [{ role: 'user', content: 'test' }],
         'test',
         'Spanish',
-        ['Previous point about grammar.'],
+        ['Previous point about grammar.']
       );
 
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
-      expect(body.messages[0].content).toContain('Previous point about grammar.');
+      expect(body.messages[0].content).toContain(
+        'Previous point about grammar.'
+      );
       expect(body.messages[0].content).toContain('DO NOT repeat');
     });
 
@@ -181,7 +187,7 @@ describe('InworldLLM', () => {
         [{ role: 'user', content: 'test' }],
         'test',
         'Spanish',
-        [],
+        []
       );
 
       expect(feedback).toBeNull();
@@ -231,7 +237,7 @@ describe('InworldLLM', () => {
 
       await llm.generateFlashcard(
         [{ role: 'user', content: 'test' }],
-        'Spanish',
+        'Spanish'
       );
 
       expect(fetchSpy).toHaveBeenCalledWith(
@@ -242,7 +248,7 @@ describe('InworldLLM', () => {
             'Content-Type': 'application/json',
             Authorization: 'Basic test-key',
           }),
-        }),
+        })
       );
 
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
@@ -274,7 +280,7 @@ describe('InworldLLM', () => {
         [{ role: 'user', content: 'Hola' }],
         'Hola',
         'Spanish',
-        [],
+        []
       );
 
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
@@ -303,7 +309,7 @@ describe('InworldLLM', () => {
 
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.inworld.ai/tts/v1/voice',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({ method: 'POST' })
       );
 
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);

@@ -10,7 +10,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { SessionManager } from './session-manager.js';
 import { InworldLLM } from './inworld-llm.js';
-import { DEFAULT_LANGUAGE_CODE, getLanguageConfig } from '../config/languages.js';
+import {
+  DEFAULT_LANGUAGE_CODE,
+  getLanguageConfig,
+} from '../config/languages.js';
 import { serverLogger as logger } from '../utils/logger.js';
 
 const sessions = new Map<string, SessionManager>();
@@ -40,24 +43,40 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
           const langConfig = getLanguageConfig(languageCode);
 
           // Generate flashcard (fire-and-forget)
-          llm.generateFlashcard(messages, langConfig.name).then((card) => {
-            if (card) {
-              wsSend(ws, { type: 'flashcards_generated', flashcards: [card] });
-            }
-          }).catch((err) => logger.warn({ err }, 'flashcard_generation_failed'));
+          llm
+            .generateFlashcard(messages, langConfig.name)
+            .then((card) => {
+              if (card) {
+                wsSend(ws, {
+                  type: 'flashcards_generated',
+                  flashcards: [card],
+                });
+              }
+            })
+            .catch((err) =>
+              logger.warn({ err }, 'flashcard_generation_failed')
+            );
 
           // Generate feedback on user's last utterance (fire-and-forget)
-          llm.generateFeedback(messages, userText, langConfig.name, previousFeedback).then((feedback) => {
-            if (feedback) {
-              previousFeedback.push(feedback);
-              if (previousFeedback.length > 10) previousFeedback.shift();
-              wsSend(ws, {
-                type: 'feedback_generated',
-                messageContent: userText,
-                feedback,
-              });
-            }
-          }).catch((err) => logger.warn({ err }, 'feedback_generation_failed'));
+          llm
+            .generateFeedback(
+              messages,
+              userText,
+              langConfig.name,
+              previousFeedback
+            )
+            .then((feedback) => {
+              if (feedback) {
+                previousFeedback.push(feedback);
+                if (previousFeedback.length > 10) previousFeedback.shift();
+                wsSend(ws, {
+                  type: 'feedback_generated',
+                  messageContent: userText,
+                  feedback,
+                });
+              }
+            })
+            .catch((err) => logger.warn({ err }, 'feedback_generation_failed'));
         };
 
         await manager.start();
@@ -105,7 +124,10 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
             // Pronounce a word/phrase using Inworld TTS (for flashcard playback)
             if (msg.text) {
               const langConfig = getLanguageConfig(languageCode);
-              const audio = await llm.pronounce(msg.text, langConfig.ttsConfig.speakerId);
+              const audio = await llm.pronounce(
+                msg.text,
+                langConfig.ttsConfig.speakerId
+              );
               if (audio) {
                 wsSend(ws, {
                   type: 'tts_pronounce_audio',
@@ -130,7 +152,7 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
               const translation = await llm.translate(
                 msg.text,
                 msg.sourceLang || 'auto',
-                msg.targetLang,
+                msg.targetLang
               );
               wsSend(ws, {
                 type: 'translation_result',

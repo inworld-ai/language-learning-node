@@ -83,7 +83,12 @@ describe('SessionManager', () => {
       });
 
       const mgrAny = mgr as unknown as Record<string, unknown>;
-      mgrAny.inworldWs = { readyState: 1, send: vi.fn(), on: vi.fn(), close: vi.fn() };
+      mgrAny.inworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
       mgrAny.sessionReady = true;
 
       mgr.triggerGreeting();
@@ -100,7 +105,12 @@ describe('SessionManager', () => {
       });
 
       const mgrAny = mgr as unknown as Record<string, unknown>;
-      const mockInworldWs = { readyState: 1, send: vi.fn(), on: vi.fn(), close: vi.fn() };
+      const mockInworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
       mgrAny.inworldWs = mockInworldWs;
       mgrAny.sessionReady = true;
       mgrAny.turnCount = 1; // Already had a turn
@@ -119,12 +129,19 @@ describe('SessionManager', () => {
       });
 
       const mgrAny = mgr as unknown as Record<string, unknown>;
-      mgrAny.inworldWs = { readyState: 1, send: vi.fn(), on: vi.fn(), close: vi.fn() };
+      mgrAny.inworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
       mgrAny.sessionReady = false;
 
       mgr.triggerGreeting();
 
-      expect((mgrAny.inworldWs as { send: ReturnType<typeof vi.fn> }).send).not.toHaveBeenCalled();
+      expect(
+        (mgrAny.inworldWs as { send: ReturnType<typeof vi.fn> }).send
+      ).not.toHaveBeenCalled();
     });
 
     it('should use correct language name in greeting prompt', () => {
@@ -136,7 +153,12 @@ describe('SessionManager', () => {
       });
 
       const mgrAny = mgr as unknown as Record<string, unknown>;
-      const mockInworldWs = { readyState: 1, send: vi.fn(), on: vi.fn(), close: vi.fn() };
+      const mockInworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
       mgrAny.inworldWs = mockInworldWs;
       mgrAny.sessionReady = true;
 
@@ -157,7 +179,12 @@ describe('SessionManager', () => {
       });
 
       const mgrAny = mgr as unknown as Record<string, unknown>;
-      mgrAny.inworldWs = { readyState: 1, send: vi.fn(), on: vi.fn(), close: vi.fn() };
+      mgrAny.inworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
       mgrAny.sessionReady = true;
 
       // Trigger greeting to set the greetingItemId
@@ -166,13 +193,17 @@ describe('SessionManager', () => {
       expect(greetingId).toBeTruthy();
 
       // Simulate the Inworld server echoing back the greeting item
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
       handler.call(mgr, {
         type: 'conversation.item.done',
         item: {
           id: greetingId,
           role: 'user',
-          content: [{ type: 'input_text', text: '[The student just joined...]' }],
+          content: [
+            { type: 'input_text', text: '[The student just joined...]' },
+          ],
         },
       });
 
@@ -197,7 +228,9 @@ describe('SessionManager', () => {
       const mgrAny = mgr as unknown as Record<string, unknown>;
       mgrAny.sessionReady = true;
 
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
       handler.call(mgr, {
         type: 'conversation.item.done',
         item: {
@@ -226,7 +259,9 @@ describe('SessionManager', () => {
       const mgrAny = mgr as unknown as Record<string, unknown>;
       mgrAny.sessionReady = true;
 
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
       handler.call(mgr, {
         type: 'conversation.item.done',
         item: {
@@ -257,7 +292,9 @@ describe('SessionManager', () => {
       const mgrAny = mgr as unknown as Record<string, unknown>;
       mgrAny.sessionReady = true;
 
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
 
       handler.call(mgr, {
         type: 'conversation.item.input_audio_transcription.delta',
@@ -272,7 +309,9 @@ describe('SessionManager', () => {
       const sent = (clientWs as unknown as { _messages: string[] })._messages;
       const partials = sent
         .map((m) => JSON.parse(m))
-        .filter((m: Record<string, unknown>) => m.type === 'partial_transcript');
+        .filter(
+          (m: Record<string, unknown>) => m.type === 'partial_transcript'
+        );
       expect(partials).toHaveLength(2);
       expect(partials[0].text).toBe('Hola, ');
       expect(partials[1].text).toBe('Hola, me llamo Cale.');
@@ -289,7 +328,9 @@ describe('SessionManager', () => {
       const mgrAny = mgr as unknown as Record<string, unknown>;
       mgrAny.sessionReady = true;
 
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
 
       // First utterance
       handler.call(mgr, {
@@ -310,7 +351,9 @@ describe('SessionManager', () => {
       const sent = (clientWs as unknown as { _messages: string[] })._messages;
       const partials = sent
         .map((m) => JSON.parse(m))
-        .filter((m: Record<string, unknown>) => m.type === 'partial_transcript');
+        .filter(
+          (m: Record<string, unknown>) => m.type === 'partial_transcript'
+        );
       // Second delta should NOT accumulate with first utterance
       expect(partials[partials.length - 1].text).toBe('Adiós');
     });
@@ -326,7 +369,9 @@ describe('SessionManager', () => {
       const mgrAny = mgr as unknown as Record<string, unknown>;
       mgrAny.sessionReady = true;
 
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
       handler.call(mgr, {
         type: 'conversation.item.input_audio_transcription.completed',
         transcript: 'Hola como estas',
@@ -351,7 +396,9 @@ describe('SessionManager', () => {
       const mgrAny = mgr as unknown as Record<string, unknown>;
       mgrAny.sessionReady = true;
 
-      const handler = mgrAny.handleInworldEvent as (event: Record<string, unknown>) => void;
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
       handler.call(mgr, { type: 'input_audio_buffer.speech_stopped' });
 
       const sent = (clientWs as unknown as { _messages: string[] })._messages;
@@ -368,7 +415,12 @@ describe('SessionManager', () => {
       });
 
       const mgrAny = mgr as unknown as Record<string, unknown>;
-      const mockInworldWs = { readyState: 1, send: vi.fn(), on: vi.fn(), close: vi.fn() };
+      const mockInworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
       mgrAny.inworldWs = mockInworldWs;
 
       // Call sendSessionUpdate directly
@@ -377,7 +429,9 @@ describe('SessionManager', () => {
 
       const sent = JSON.parse(mockInworldWs.send.mock.calls[0][0]);
       expect(sent.type).toBe('session.update');
-      expect(sent.session.audio.input.transcription.model).toBe('assemblyai/u3-rt-pro');
+      expect(sent.session.audio.input.transcription.model).toBe(
+        'assemblyai/u3-rt-pro'
+      );
       expect(sent.session.audio.input.transcription.language).toBe('es-MX');
       expect(sent.session.model).toBe('openai/gpt-4.1-nano');
     });

@@ -12,10 +12,7 @@ import WebSocket from 'ws';
 import type { WebSocket as ClientWebSocket } from 'ws';
 
 import { serverConfig } from '../config/server.js';
-import {
-  getLanguageConfig,
-  type LanguageConfig,
-} from '../config/languages.js';
+import { getLanguageConfig, type LanguageConfig } from '../config/languages.js';
 import { createSessionLogger } from '../utils/logger.js';
 import { TurnMemory } from './turn-memory.js';
 import { getMemoryService } from './memory-service.js';
@@ -79,7 +76,10 @@ export class SessionManager {
       });
 
       this.inworldWs.on('close', (code: number, reason: Buffer) => {
-        this.logger.info({ code, reason: reason.toString() }, 'inworld_ws_closed');
+        this.logger.info(
+          { code, reason: reason.toString() },
+          'inworld_ws_closed'
+        );
         this.sessionReady = false;
       });
     });
@@ -131,17 +131,25 @@ export class SessionManager {
         id: itemId,
         type: 'message',
         role: 'user',
-        content: [{
-          type: 'input_text',
-          text: `[The student just joined. Say hi in ${this.langConfig.name} — 1 sentence only.]`,
-        }],
+        content: [
+          {
+            type: 'input_text',
+            text: `[The student just joined. Say hi in ${this.langConfig.name} — 1 sentence only.]`,
+          },
+        ],
       },
     });
     this.inworldSend({ type: 'response.create' });
   }
 
   /** Callback for when a conversation turn completes (user + assistant) */
-  onTurnComplete: ((messages: Array<{ role: string; content: string }>, userText: string, assistantText: string) => void) | null = null;
+  onTurnComplete:
+    | ((
+        messages: Array<{ role: string; content: string }>,
+        userText: string,
+        assistantText: string
+      ) => void)
+    | null = null;
 
   /** Set user ID for Supabase memory persistence */
   setUserId(userId: string): void {
@@ -159,7 +167,7 @@ export class SessionManager {
   /** Switch language — tears down session and reconnects */
   async switchLanguage(
     languageCode: string,
-    messages?: Array<{ role: string; content: string }>,
+    messages?: Array<{ role: string; content: string }>
   ): Promise<void> {
     this.langConfig = getLanguageConfig(languageCode);
     this.conversationMessages = messages || [];
@@ -190,7 +198,10 @@ export class SessionManager {
 
   // ── Private ──────────────────────────────────────────────
 
-  private handleInworldEvent(event: Record<string, unknown>, onReady?: (value: void) => void): void {
+  private handleInworldEvent(
+    event: Record<string, unknown>,
+    onReady?: (value: void) => void
+  ): void {
     const type = event.type as string;
 
     // Debug: log non-audio event types
@@ -311,7 +322,9 @@ export class SessionManager {
         // input_audio_transcription.completed event — tracking them here
         // too would cause duplicate messages and inflated turn counts.
         if (item.role === 'user') {
-          const content = item.content as Array<{ type: string; text?: string; transcript?: string }> | undefined;
+          const content = item.content as
+            | Array<{ type: string; text?: string; transcript?: string }>
+            | undefined;
           if (content) {
             for (const part of content) {
               if (part.type === 'input_text' && part.text) {
@@ -335,7 +348,8 @@ export class SessionManager {
   }
 
   private sendSessionUpdate(): void {
-    const { teacherPersona, name, exampleTopics, ttsConfig, sttLanguageCode } = this.langConfig;
+    const { teacherPersona, name, exampleTopics, ttsConfig, sttLanguageCode } =
+      this.langConfig;
     const memoryContext = this.memory.getContext();
 
     let instructions = `# Context
@@ -415,7 +429,7 @@ export class SessionManager {
       this.onTurnComplete(
         [...this.conversationMessages],
         this.lastUserText,
-        text,
+        text
       );
       this.lastUserText = '';
     }

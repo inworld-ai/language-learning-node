@@ -31,10 +31,12 @@ app.use(express.json({ limit: '1mb' }));
 app.use(
   cors({
     origin: process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+      ? process.env.ALLOWED_ORIGINS.split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : '*',
     methods: ['GET', 'POST', 'OPTIONS'],
-  }),
+  })
 );
 
 // API routes

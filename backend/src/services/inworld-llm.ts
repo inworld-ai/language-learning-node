@@ -29,7 +29,7 @@ export class InworldLLM {
 
   async generateFlashcard(
     messages: Array<{ role: string; content: string }>,
-    targetLanguage: string,
+    targetLanguage: string
   ): Promise<Flashcard | null> {
     const conversation = messages
       .slice(-10)
@@ -74,16 +74,17 @@ ${conversation}
     messages: Array<{ role: string; content: string }>,
     userUtterance: string,
     targetLanguage: string,
-    previousFeedback: string[],
+    previousFeedback: string[]
   ): Promise<string | null> {
     const conversation = messages
       .slice(-6)
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
 
-    const prevFeedbackSection = previousFeedback.length > 0
-      ? `\n## Previous feedback (DO NOT repeat):\n${previousFeedback.map((f) => `- ${f}`).join('\n')}`
-      : '';
+    const prevFeedbackSection =
+      previousFeedback.length > 0
+        ? `\n## Previous feedback (DO NOT repeat):\n${previousFeedback.map((f) => `- ${f}`).join('\n')}`
+        : '';
 
     const prompt = `You are a ${targetLanguage} language tutor assistant. Analyze the student's most recent utterance and provide brief, helpful feedback.
 
@@ -112,9 +113,10 @@ Your feedback (one sentence in English):`;
   async translate(
     text: string,
     sourceLang: string,
-    targetLang: string,
+    targetLang: string
   ): Promise<string> {
-    const sourceDesc = sourceLang === 'auto' ? 'the source language' : sourceLang;
+    const sourceDesc =
+      sourceLang === 'auto' ? 'the source language' : sourceLang;
     const prompt = `Translate the following text from ${sourceDesc} to ${targetLang}. Return ONLY the translation, nothing else.
 
 Text: ${text}`;
@@ -127,10 +129,7 @@ Text: ${text}`;
    * Pronounce text using Inworld TTS API.
    * Returns base64-encoded LINEAR16 audio at 24kHz, or null on failure.
    */
-  async pronounce(
-    text: string,
-    voiceId: string,
-  ): Promise<string | null> {
+  async pronounce(text: string, voiceId: string): Promise<string | null> {
     if (!this.apiKey) return null;
 
     try {
@@ -169,7 +168,7 @@ Text: ${text}`;
   private async complete(
     prompt: string,
     maxTokens: number = 250,
-    temperature: number = 1.0,
+    temperature: number = 1.0
   ): Promise<string | null> {
     if (!this.apiKey) {
       logger.warn('no_api_key');

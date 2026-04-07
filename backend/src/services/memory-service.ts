@@ -19,8 +19,7 @@ import { VALID_MEMORY_TYPES } from '../types/memory.js';
 
 const logger = createLogger('MemoryService');
 
-const INWORLD_LLM_URL =
-  'https://api.inworld.ai/v1/chat/completions';
+const INWORLD_LLM_URL = 'https://api.inworld.ai/v1/chat/completions';
 
 function validateMemoryType(type: string): MemoryType {
   if (VALID_MEMORY_TYPES.includes(type as MemoryType)) {
@@ -37,7 +36,7 @@ export class MemoryService {
   async generateAndStore(
     userId: string,
     messages: Array<{ role: string; content: string }>,
-    languageCode: string,
+    languageCode: string
   ): Promise<void> {
     if (!isSupabaseConfigured() || !process.env.INWORLD_API_KEY) return;
 
@@ -107,7 +106,7 @@ export class MemoryService {
 
       logger.info(
         { memoryId: data.id, type: memory.memoryType },
-        'memory_stored',
+        'memory_stored'
       );
       return data.id;
     } catch (error) {
@@ -120,7 +119,7 @@ export class MemoryService {
     userId: string,
     queryEmbedding: number[],
     limit: number = 3,
-    threshold: number = 0.7,
+    threshold: number = 0.7
   ): Promise<MemoryMatch[]> {
     if (!isSupabaseConfigured()) return [];
 
@@ -158,7 +157,7 @@ export class MemoryService {
 
   async getUserMemories(
     userId: string,
-    limit: number = 50,
+    limit: number = 50
   ): Promise<MemoryRecord[]> {
     if (!isSupabaseConfigured()) return [];
 
@@ -221,7 +220,7 @@ export class MemoryService {
 
   private async generateMemory(
     messages: Array<{ role: string; content: string }>,
-    languageCode: string,
+    languageCode: string
   ): Promise<{
     memory: string;
     type: string;
@@ -268,7 +267,7 @@ Rules:
       if (!response.ok) {
         logger.warn(
           { status: response.status },
-          'memory_generation_llm_failed',
+          'memory_generation_llm_failed'
         );
         return null;
       }
