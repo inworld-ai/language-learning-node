@@ -20,6 +20,8 @@ Language learning app using Inworld Realtime API for voice conversations.
 
 ## Architecture
 Browser <-> our WebSocket <-> SessionManager <-> Inworld Realtime WebSocket (STT+LLM+TTS)
+- STT model: inworld/inworld-stt-1 (with per-language hints)
+- LLM model: openai/gpt-4.1-nano (via Inworld Realtime)
 - SessionManager: one per client, manages Inworld WS lifecycle, forwards audio/text, handles greeting, tracks turns
 - InworldLLM: uses Inworld LLM Router (OpenAI-compatible) for flashcards, feedback, translation
 - TurnMemory: 5-turn sliding window, non-blocking Supabase persistence
@@ -29,7 +31,7 @@ Browser <-> our WebSocket <-> SessionManager <-> Inworld Realtime WebSocket (STT
 - Optional: `SUPABASE_URL`, `SUPABASE_SECRET_KEY` for auth + memory
 
 ## Testing
-- 59 tests across 5 files (vitest)
+- 60 tests across 5 files (vitest)
 - Run: `cd backend && npx vitest run`
 - Test files: `backend/src/__tests__/`
 
