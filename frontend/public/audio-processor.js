@@ -30,7 +30,7 @@ class AudioProcessor extends AudioWorkletProcessor {
 
     // Resample to 24kHz
     const numOutputSamples = Math.floor(
-      this.inputBuffer.length / this.resampleRatio,
+      this.inputBuffer.length / this.resampleRatio
     );
     if (numOutputSamples === 0) return true;
 
@@ -55,7 +55,7 @@ class AudioProcessor extends AudioWorkletProcessor {
     // Convert to Int16 and buffer to 100ms chunks
     for (let i = 0; i < resampledData.length; i++) {
       this.outputBuffer.push(
-        Math.max(-32768, Math.min(32767, resampledData[i] * 32768)),
+        Math.max(-32768, Math.min(32767, resampledData[i] * 32768))
       );
 
       if (this.outputBuffer.length >= this.outputBufferSize) {
