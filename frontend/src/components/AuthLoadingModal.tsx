@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 import { AppModal, ModalSpinner } from './AppModal';
 
 export function AuthLoadingModal() {
   const { user } = useAuth();
+  const { state } = useApp();
   const [visible, setVisible] = useState(false);
   const prevUserRef = useRef<string | null>(null);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Show modal when user signs in
   useEffect(() => {
     const prevUserId = prevUserRef.current;
     const currentUserId = user?.id ?? null;
@@ -14,8 +18,11 @@ export function AuthLoadingModal() {
 
     if (!prevUserId && currentUserId) {
       setVisible(true);
-      const timer = setTimeout(() => setVisible(false), 2000);
-      return () => clearTimeout(timer);
+      // Safety timeout — dismiss after 10s even if sync hangs
+      maxTimerRef.current = setTimeout(() => setVisible(false), 10000);
+      return () => {
+        if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
+      };
     }
 
     if (prevUserId && !currentUserId) {
@@ -24,6 +31,19 @@ export function AuthLoadingModal() {
 
     return undefined;
   }, [user]);
+
+  // Dismiss when conversations have loaded (state.conversations changes after sync)
+  useEffect(() => {
+    if (visible && user && state.conversations.length > 0) {
+      // Small delay so the UI doesn't flash
+      const timer = setTimeout(() => {
+        setVisible(false);
+        if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [visible, user, state.conversations]);
 
   return (
     <AppModal visible={visible}>
