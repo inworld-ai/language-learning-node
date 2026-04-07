@@ -20,7 +20,7 @@ Language learning app using Inworld Realtime API for voice conversations.
 
 ## Architecture
 Browser <-> our WebSocket <-> SessionManager <-> Inworld Realtime WebSocket (STT+LLM+TTS)
-- STT model: inworld/inworld-stt-1 (with per-language hints)
+- STT model: assemblyai/u3-rt-pro (with per-language hints)
 - LLM model: openai/gpt-4.1-nano (via Inworld Realtime)
 - SessionManager: one per client, manages Inworld WS lifecycle, forwards audio/text, handles greeting, tracks turns
 - InworldLLM: uses Inworld LLM Router (OpenAI-compatible) for flashcards, feedback, translation

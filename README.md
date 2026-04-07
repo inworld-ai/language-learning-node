@@ -134,7 +134,7 @@ The app uses a real-time audio streaming architecture:
 
 1. **Frontend** captures microphone audio (24kHz PCM16) and streams it via WebSocket
 2. **Backend** proxies audio to an **Inworld Realtime WebSocket** session that handles:
-   - Speech-to-text (Inworld STT-1) with language hints
+   - Speech-to-text (AssemblyAI u3-rt-pro via Inworld) with language hints
    - LLM response generation (GPT-4.1-nano via Inworld LLM Router)
    - Text-to-speech with language-specific voices
 3. **Flashcards** are auto-generated from conversation vocabulary via the Inworld LLM Router

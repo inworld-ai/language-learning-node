@@ -381,7 +381,7 @@ export class SessionManager {
         audio: {
           input: {
             transcription: {
-              model: 'inworld/inworld-stt-1',
+              model: 'assemblyai/u3-rt-pro',
               language: sttLanguageCode,
             },
             turn_detection: {

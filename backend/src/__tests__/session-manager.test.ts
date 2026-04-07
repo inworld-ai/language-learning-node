@@ -430,7 +430,7 @@ describe('SessionManager', () => {
       const sent = JSON.parse(mockInworldWs.send.mock.calls[0][0]);
       expect(sent.type).toBe('session.update');
       expect(sent.session.audio.input.transcription.model).toBe(
-        'inworld/inworld-stt-1'
+        'assemblyai/u3-rt-pro'
       );
       expect(sent.session.audio.input.transcription.language).toBe('es-MX');
       expect(sent.session.model).toBe('openai/gpt-4.1-nano');
