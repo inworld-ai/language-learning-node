@@ -78,7 +78,7 @@ export class AudioPlayer {
     base64Audio: string,
     sampleRate: number = 16000,
     isLastChunk: boolean = false,
-    audioFormat: 'int16' | 'float32' = 'int16',
+    audioFormat: 'int16' | 'float32' = 'int16'
   ): Promise<void> {
     if (!base64Audio || base64Audio.length === 0) {
       return;
@@ -104,7 +104,7 @@ export class AudioPlayer {
       } catch (error) {
         console.error(
           '[AudioPlayer] iOS playback failed, falling back to standard:',
-          error,
+          error
         );
       }
     }
@@ -125,17 +125,24 @@ export class AudioPlayer {
 
       // Strip WAV header if present — Inworld may include a 44-byte RIFF/WAV
       // header on each audio chunk. Interpreting it as PCM samples causes clicks.
-      if (bytes.length > 44 &&
-          bytes[0] === 0x52 && bytes[1] === 0x49 &&
-          bytes[2] === 0x46 && bytes[3] === 0x46) {
+      if (
+        bytes.length > 44 &&
+        bytes[0] === 0x52 &&
+        bytes[1] === 0x49 &&
+        bytes[2] === 0x46 &&
+        bytes[3] === 0x46
+      ) {
         bytes = bytes.slice(44);
       }
 
       // Create audio buffer (no per-chunk fade — GainNode handles envelope)
       const audioBuffer = await this.createAudioBuffer(
-        bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength
+        ),
         sampleRate,
-        audioFormat,
+        audioFormat
       );
 
       this.audioQueue.push(audioBuffer);
@@ -158,7 +165,7 @@ export class AudioPlayer {
   private async createAudioBuffer(
     arrayBuffer: ArrayBuffer,
     sampleRate: number,
-    audioFormat: 'int16' | 'float32' = 'int16',
+    audioFormat: 'int16' | 'float32' = 'int16'
   ): Promise<AudioBuffer> {
     if (!this.audioContext) {
       throw new Error('Audio context not initialized');
@@ -173,7 +180,7 @@ export class AudioPlayer {
       const audioBuffer = this.audioContext.createBuffer(
         1,
         numSamples,
-        sampleRate,
+        sampleRate
       );
       const channelData = audioBuffer.getChannelData(0);
 
@@ -190,7 +197,7 @@ export class AudioPlayer {
       const audioBuffer = this.audioContext.createBuffer(
         1,
         numSamples,
-        sampleRate,
+        sampleRate
       );
       const channelData = audioBuffer.getChannelData(0);
 

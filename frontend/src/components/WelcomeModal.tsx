@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AppModal } from './AppModal';
 
 const DISMISSED_KEY = 'welcome-dismissed';
 
 export function WelcomeModal() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (!sessionStorage.getItem(DISMISSED_KEY)) {
-      setVisible(true);
-    }
-  }, []);
+  const [visible, setVisible] = useState(
+    () => !sessionStorage.getItem(DISMISSED_KEY)
+  );
 
   function dismiss() {
     setVisible(false);
@@ -27,13 +23,22 @@ export function WelcomeModal() {
         </a>
         . Get real-time feedback, build vocabulary with flashcards, and have
         natural conversations — all by voice. The app is{' '}
-        <a href="https://github.com/inworld-ai/language-learning-node" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://github.com/inworld-ai/language-learning-node"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           open source
         </a>{' '}
         and easily deployable on{' '}
-        <a href="https://render.com/deploy?repo=https://github.com/inworld-ai/language-learning-node" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://render.com/deploy?repo=https://github.com/inworld-ai/language-learning-node"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Render
-        </a>.
+        </a>
+        .
       </p>
       <div className="welcome-features">
         <div className="welcome-feature">

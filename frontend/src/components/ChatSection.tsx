@@ -162,7 +162,9 @@ export function ChatSection() {
           ))}
 
           {/* User transcript — single stable element for both partial and final */}
-          {(currentTranscript || pendingTranscription || (speechDetected && isRecording)) && (
+          {(currentTranscript ||
+            pendingTranscription ||
+            (speechDetected && isRecording)) && (
             <div
               className="message learner streaming realtime"
               id="realtime-transcript"

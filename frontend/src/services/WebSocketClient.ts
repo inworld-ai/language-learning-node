@@ -284,7 +284,10 @@ export class WebSocketClient {
         break;
 
       case 'interrupt':
-        this.emit('interrupt', { reason: message.reason, conversationId: message.conversationId });
+        this.emit('interrupt', {
+          reason: message.reason,
+          conversationId: message.conversationId,
+        });
         break;
 
       case 'conversation_rollback':

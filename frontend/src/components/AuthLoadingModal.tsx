@@ -27,13 +27,14 @@ export function AuthLoadingModal() {
 
     // After auth has settled, detect actual sign-in (null → userId)
     if (!prevUserId.current && currentUserId) {
-      setVisible(true);
+      // Use queueMicrotask to avoid synchronous setState in effect body
+      queueMicrotask(() => setVisible(true));
       maxTimerRef.current = setTimeout(() => setVisible(false), 10000);
     }
 
     // Sign out
     if (prevUserId.current && !currentUserId) {
-      setVisible(false);
+      queueMicrotask(() => setVisible(false));
     }
 
     prevUserId.current = currentUserId;

@@ -22,7 +22,11 @@ export function AppModal({ visible, onDismiss, children }: AppModalProps) {
     >
       <div className="welcome-modal" onClick={(e) => e.stopPropagation()}>
         {onDismiss && (
-          <button className="welcome-close" onClick={onDismiss} aria-label="Close">
+          <button
+            className="welcome-close"
+            onClick={onDismiss}
+            aria-label="Close"
+          >
             ×
           </button>
         )}
