@@ -43,13 +43,16 @@ export interface LanguageConfig {
   ttsConfig: TTSConfig;
   teacherPersona: TeacherPersona;
   exampleTopics: string[];
+  /** 2–4 natural disfluency fillers in the target language, spoken inline (e.g. ja: ['えーと', 'あの']). */
+  disfluencies: string[];
 }
 
 /**
  * Supported Languages Configuration
  *
- * The first 6 entries are curated personas (existing). All other languages
- * use Sarah/Jason TTS-2 voices alternated, with concise templated personas.
+ * The first 6 entries are curated personas. Among the rest, languages
+ * with native voices in the Inworld TTS-2 catalog use them; the others
+ * fall back to the multilingual Sarah/Jason voices.
  */
 export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
   // ── Curated languages ────────────────────────────────────────
@@ -79,6 +82,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'American idioms and slang',
       'travel across the United States',
     ],
+    disfluencies: ['um', 'uh', 'well', 'you know'],
   },
 
   es: {
@@ -107,6 +111,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'the concept of brunch across cultures',
       'Balkan travel',
     ],
+    disfluencies: ['este', 'eh', 'pues', 'o sea'],
   },
 
   fr: {
@@ -136,6 +141,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'travel in Provence and the French Riviera',
       'French music from Édith Piaf to modern artists',
     ],
+    disfluencies: ['euh', 'ben', 'bah', 'tu vois'],
   },
 
   de: {
@@ -165,6 +171,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'traveling through Bavaria and the Alps',
       'German literature from Goethe to modern authors',
     ],
+    disfluencies: ['ähm', 'also', 'naja', 'sozusagen'],
   },
 
   it: {
@@ -194,6 +201,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'fashion and design in Milan',
       'Italian music from opera to modern pop',
     ],
+    disfluencies: ['ehm', 'cioè', 'allora', 'insomma'],
   },
 
   pt: {
@@ -223,9 +231,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'football (soccer) culture',
       'the Amazon and Brazilian nature',
     ],
+    disfluencies: ['é', 'tipo', 'então', 'sabe'],
   },
 
-  // ── Soniox-supported languages (alphabetical, alternating Sarah/Jason) ─
+  // ── Soniox-supported languages (alphabetical) ────────────────────────
+  // Languages with native voices in the Inworld catalog use them; the rest
+  // alternate Sarah/Jason as multilingual TTS-2 fallbacks.
   af: {
     code: 'af',
     bcp47: 'af-ZA',
@@ -241,6 +252,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a South African tutor who loves teaching Afrikaans through Cape Town life, braai culture, and Karoo road trips',
     },
     exampleTopics: ['Cape Town and Table Mountain', 'braai culture and South African food', 'Afrikaans music and writers'],
+    disfluencies: ['ag', 'um', 'nou ja'],
   },
 
   sq: {
@@ -258,6 +270,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Albanian tutor passionate about Tirana, the Albanian Riviera, and traditional cuisine',
     },
     exampleTopics: ['Tirana street life', 'the Albanian Riviera and Ksamil', 'traditional dishes like tavë kosi'],
+    disfluencies: ['ëëë', 'pra', 'domethënë'],
   },
 
   ar: {
@@ -266,7 +279,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Arabic',
     nativeName: 'العربية',
     flag: '🇸🇦',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Nour', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Layla',
       age: 33,
@@ -275,6 +288,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Saudi tutor who loves teaching Arabic through Middle Eastern history, classical poetry, and modern culture',
     },
     exampleTopics: ['Arabic poetry and proverbs', 'food across the Levant and Gulf', 'travel to Petra, Cairo, and Riyadh'],
+    disfluencies: ['يعني', 'هه', 'يا عني'],
   },
 
   az: {
@@ -292,6 +306,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Azerbaijani tutor who loves Baku, the Caspian coast, and Caucasus cuisine',
     },
     exampleTopics: ['Baku old city and modern skyline', 'plov and traditional Azerbaijani food', 'mugham music'],
+    disfluencies: ['yəni', 'ee', 'belə'],
   },
 
   eu: {
@@ -309,6 +324,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Basque tutor who loves teaching Euskara through San Sebastián pintxos and Bilbao culture',
     },
     exampleTopics: ['pintxo bars in Donostia', 'the Guggenheim and Bilbao', 'Basque mythology and rural life'],
+    disfluencies: ['eee', 'beno', 'ba'],
   },
 
   be: {
@@ -326,6 +342,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Belarusian tutor passionate about Minsk, traditional folk songs, and Belarusian literature',
     },
     exampleTopics: ['Minsk and Belarusian cities', 'draniki and traditional cuisine', 'Belarusian folk music'],
+    disfluencies: ['ну', 'эээ', 'значыць'],
   },
 
   bn: {
@@ -343,6 +360,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Bangladeshi tutor who loves teaching Bengali through Dhaka life, Tagore poetry, and the Sundarbans',
     },
     exampleTopics: ['Dhaka street food', 'Tagore and Bengali literature', 'Sundarbans and rural Bengal'],
+    disfluencies: ['মানে', 'ইয়ে', 'আচ্ছা'],
   },
 
   bs: {
@@ -360,6 +378,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Bosnian tutor passionate about Sarajevo, ćevapi, and Balkan history',
     },
     exampleTopics: ['Sarajevo old town', 'ćevapi and Bosnian cuisine', 'Mostar and the Stari Most bridge'],
+    disfluencies: ['ovaj', 'ono', 'znaš'],
   },
 
   bg: {
@@ -377,6 +396,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Bulgarian tutor who loves Sofia, Rila monasteries, and Black Sea summers',
     },
     exampleTopics: ['Sofia and the Vitosha mountains', 'banitsa and shopska salad', 'Bulgarian folk music and dance'],
+    disfluencies: ['ами', 'значи', 'нали'],
   },
 
   ca: {
@@ -394,6 +414,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Catalan tutor who loves Barcelona, Gaudí, and Mediterranean coastal life',
     },
     exampleTopics: ['Barcelona neighborhoods', 'castellers and Catalan traditions', 'pa amb tomàquet and Catalan food'],
+    disfluencies: ['eh', 'doncs', 'o sigui'],
   },
 
   zh: {
@@ -402,7 +423,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Chinese',
     nativeName: '中文',
     flag: '🇨🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Mei', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Mei',
       age: 32,
@@ -411,6 +432,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Beijing tutor who loves teaching Mandarin through tea culture, classical poetry, and modern Chinese cinema',
     },
     exampleTopics: ['Beijing hutongs and street food', 'Chinese tea culture', 'classical poetry and modern films'],
+    disfluencies: ['那个', '就是', '嗯'],
   },
 
   hr: {
@@ -428,6 +450,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Croatian tutor passionate about Dubrovnik, Dalmatian islands, and Adriatic seafood',
     },
     exampleTopics: ['Dalmatian coast and islands', 'Plitvice Lakes', 'peka and Croatian seafood'],
+    disfluencies: ['ovaj', 'znaš', 'pa'],
   },
 
   cs: {
@@ -445,6 +468,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Czech tutor who loves teaching through Prague history, Bohemian beer halls, and Czech literature',
     },
     exampleTopics: ['Prague castle and the old town', 'Czech pivo and beer culture', 'Kafka and Czech cinema'],
+    disfluencies: ['no', 'jakoby', 'prostě'],
   },
 
   da: {
@@ -462,6 +486,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Danish tutor passionate about Copenhagen, hygge, and Nordic design',
     },
     exampleTopics: ['Copenhagen and Nyhavn', 'hygge and Scandinavian design', 'smørrebrød and new Nordic cuisine'],
+    disfluencies: ['øh', 'altså', 'jo'],
   },
 
   nl: {
@@ -470,7 +495,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Dutch',
     nativeName: 'Nederlands',
     flag: '🇳🇱',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Katrien', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Sanne',
       age: 31,
@@ -479,6 +504,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Dutch tutor who loves teaching through Amsterdam canals, cycling culture, and Dutch design',
     },
     exampleTopics: ['Amsterdam canals and museums', 'cycling and Dutch daily life', 'stroopwafels and bitterballen'],
+    disfluencies: ['eh', 'nou', 'weet je'],
   },
 
   et: {
@@ -496,6 +522,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Estonian tutor passionate about Tallinn old town, e-Estonia, and Baltic forests',
     },
     exampleTopics: ['Tallinn medieval old town', 'Estonian saunas and forest culture', 'e-Estonia and digital society'],
+    disfluencies: ['noh', 'eee', 'tähendab'],
   },
 
   tl: {
@@ -513,6 +540,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Filipino tutor who loves teaching Tagalog through Manila life, island hopping, and family traditions',
     },
     exampleTopics: ['Manila and Cebu', 'adobo and lechon', 'Philippine islands and beaches'],
+    disfluencies: ['ano', 'kasi', 'parang'],
   },
 
   fi: {
@@ -530,6 +558,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Finnish tutor who loves teaching Finnish through Helsinki life and Nordic culture',
     },
     exampleTopics: ['sauna culture', 'Finnish design and architecture', 'life in Helsinki and Lapland'],
+    disfluencies: ['öö', 'niinku', 'tota'],
   },
 
   gl: {
@@ -547,6 +576,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Galician tutor passionate about Santiago de Compostela, Atlantic coast, and Galician seafood',
     },
     exampleTopics: ['Camino de Santiago', 'pulpo a la gallega and seafood', 'Galician folk music'],
+    disfluencies: ['eh', 'pois', 'ou sexa'],
   },
 
   el: {
@@ -564,6 +594,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Greek tutor who loves teaching through Athens history, the Aegean islands, and Greek philosophy',
     },
     exampleTopics: ['Athens and the Acropolis', 'Greek islands like Santorini and Crete', 'Greek philosophy and mythology'],
+    disfluencies: ['ε', 'δηλαδή', 'ξέρεις'],
   },
 
   gu: {
@@ -581,6 +612,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Gujarati tutor passionate about Ahmedabad, vegetarian cuisine, and Garba dance',
     },
     exampleTopics: ['Ahmedabad and Gujarati culture', 'dhokla, thepla and vegetarian thalis', 'Navratri and Garba'],
+    disfluencies: ['એમ', 'મતલબ', 'જેમ કે'],
   },
 
   he: {
@@ -589,7 +621,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Hebrew',
     nativeName: 'עברית',
     flag: '🇮🇱',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Yael', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Noa',
       age: 31,
@@ -598,6 +630,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Israeli tutor who loves teaching Hebrew through Tel Aviv beach life, Jerusalem history, and modern Israeli culture',
     },
     exampleTopics: ['Tel Aviv and Jaffa', 'Jerusalem and the Old City', 'shakshuka and Israeli cuisine'],
+    disfluencies: ['אהה', 'יעני', 'כאילו'],
   },
 
   hi: {
@@ -606,7 +639,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Hindi',
     nativeName: 'हिन्दी',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Aarav', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Aarav',
       age: 34,
@@ -615,6 +648,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Indian tutor who loves teaching Hindi through Bollywood, street food, and travel across India',
     },
     exampleTopics: ['Delhi and Mumbai life', 'Bollywood films and music', 'Indian street food and chai'],
+    disfluencies: ['मतलब', 'अरे', 'यानी'],
   },
 
   hu: {
@@ -632,6 +666,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Hungarian tutor passionate about Budapest, thermal baths, and Magyar literature',
     },
     exampleTopics: ['Budapest and the Danube', 'gulyás and Hungarian cuisine', 'thermal baths and ruin pubs'],
+    disfluencies: ['hát', 'izé', 'ugye'],
   },
 
   id: {
@@ -649,6 +684,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Indonesian tutor who loves teaching through Bali, Javanese culture, and the diverse archipelago',
     },
     exampleTopics: ['Bali and Java', 'nasi goreng and Indonesian street food', 'island hopping across Indonesia'],
+    disfluencies: ['anu', 'gitu', 'ya'],
   },
 
   ja: {
@@ -657,7 +693,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Japanese',
     nativeName: '日本語',
     flag: '🇯🇵',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Hina', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Yuki',
       age: 32,
@@ -666,6 +702,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Japanese tutor who loves teaching through Tokyo neighborhoods, tea ceremony, and modern pop culture',
     },
     exampleTopics: ['Tokyo neighborhoods and Kyoto temples', 'sushi, ramen, and izakaya culture', 'anime, manga, and J-pop'],
+    disfluencies: ['えーと', 'あの', 'そうですね'],
   },
 
   kn: {
@@ -683,6 +720,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Karnataka tutor passionate about Bengaluru, Mysuru palaces, and South Indian cuisine',
     },
     exampleTopics: ['Bengaluru tech and café culture', 'Mysuru palace and Hampi ruins', 'masala dosa and South Indian food'],
+    disfluencies: ['ಅಂದ್ರೆ', 'ಅಯ್ಯೋ', 'ಹಾ'],
   },
 
   kk: {
@@ -700,6 +738,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Kazakh tutor who loves teaching through Almaty, the steppes, and Central Asian traditions',
     },
     exampleTopics: ['Almaty and Astana', 'beshbarmak and steppe cuisine', 'eagle hunting and Kazakh traditions'],
+    disfluencies: ['яғни', 'ееее', 'былай'],
   },
 
   ko: {
@@ -708,7 +747,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Korean',
     nativeName: '한국어',
     flag: '🇰🇷',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Hyunwoo', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Min-jun',
       age: 31,
@@ -717,6 +756,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Korean tutor who loves teaching through Seoul life, K-pop, and Korean food culture',
     },
     exampleTopics: ['Seoul neighborhoods and Jeju island', 'K-pop, K-dramas, and Korean cinema', 'kimchi, bibimbap, and Korean BBQ'],
+    disfluencies: ['그…', '음…', '저기'],
   },
 
   lv: {
@@ -734,6 +774,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Latvian tutor passionate about Riga art nouveau, Baltic forests, and folk traditions',
     },
     exampleTopics: ['Riga old town and art nouveau', 'Latvian folk songs (dainas)', 'midsummer Jāņi celebrations'],
+    disfluencies: ['nu', 'tātad', 'redzi'],
   },
 
   lt: {
@@ -751,6 +792,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Lithuanian tutor who loves Vilnius old town, Curonian Spit dunes, and Baltic history',
     },
     exampleTopics: ['Vilnius and Trakai castle', 'cepelinai and Lithuanian cuisine', 'Curonian Spit and the Baltic coast'],
+    disfluencies: ['na', 'tai', 'žinai'],
   },
 
   mk: {
@@ -768,6 +810,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Macedonian tutor passionate about Skopje, Lake Ohrid, and Balkan history',
     },
     exampleTopics: ['Skopje and Lake Ohrid', 'tavče gravče and Macedonian cuisine', 'Balkan folk music'],
+    disfluencies: ['па', 'значи', 'знаеш'],
   },
 
   ms: {
@@ -785,6 +828,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Malaysian tutor who loves teaching through KL street food, Penang heritage, and Borneo nature',
     },
     exampleTopics: ['Kuala Lumpur and Penang', 'nasi lemak and Malaysian street food', 'Borneo rainforests'],
+    disfluencies: ['hmm', 'macam', 'tu'],
   },
 
   ml: {
@@ -802,6 +846,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Kerala tutor passionate about backwater houseboats, Kathakali, and Keralan cuisine',
     },
     exampleTopics: ['Kerala backwaters and Kochi', 'sadya and coconut-based cooking', 'Kathakali and traditional arts'],
+    disfluencies: ['അതേ', 'പിന്നെ', 'അല്ലെ'],
   },
 
   mr: {
@@ -819,6 +864,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Maharashtrian tutor who loves teaching through Mumbai life, Pune culture, and Marathi cinema',
     },
     exampleTopics: ['Mumbai and the Western Ghats', 'vada pav and Maharashtrian street food', 'Marathi theatre and cinema'],
+    disfluencies: ['म्हणजे', 'अरे', 'तर'],
   },
 
   no: {
@@ -836,6 +882,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Norwegian tutor passionate about Oslo, fjord hikes, and Nordic outdoor life',
     },
     exampleTopics: ['Oslo and the Norwegian fjords', 'friluftsliv and outdoor culture', 'brunost and Norwegian cuisine'],
+    disfluencies: ['eh', 'liksom', 'altså'],
   },
 
   fa: {
@@ -853,6 +900,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'an Iranian tutor who loves teaching Persian through Tehran life, classical poetry, and Iranian cuisine',
     },
     exampleTopics: ['Tehran and Isfahan', 'Hafez, Rumi and Persian poetry', 'kebabs, stews, and Persian rice dishes'],
+    disfluencies: ['یعنی', 'خب', 'چیز'],
   },
 
   pl: {
@@ -861,15 +909,16 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Polish',
     nativeName: 'Polski',
     flag: '🇵🇱',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Szymon', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
-      name: 'Kasia',
+      name: 'Szymon',
       age: 33,
       nationality: 'Polish',
       description:
         'a Polish tutor passionate about Kraków old town, Polish cinema, and pierogi traditions',
     },
     exampleTopics: ['Kraków and Warsaw', 'pierogi and Polish home cooking', 'Polish cinema and history'],
+    disfluencies: ['no', 'yyy', 'wiesz'],
   },
 
   pa: {
@@ -887,6 +936,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Punjabi tutor who loves teaching through Amritsar, bhangra, and Punjabi food culture',
     },
     exampleTopics: ['Amritsar and the Golden Temple', 'butter chicken, sarson da saag, and Punjabi food', 'bhangra and Punjabi music'],
+    disfluencies: ['ਮਤਲਬ', 'ਯਾਨੀ', 'ਉਹ'],
   },
 
   ro: {
@@ -904,6 +954,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Romanian tutor passionate about Bucharest, Transylvanian castles, and Carpathian villages',
     },
     exampleTopics: ['Bucharest and Transylvania', 'sarmale and Romanian home cooking', 'Carpathian mountains and folklore'],
+    disfluencies: ['adică', 'păi', 'deci'],
   },
 
   ru: {
@@ -912,7 +963,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Russian',
     nativeName: 'Русский',
     flag: '🇷🇺',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: { speakerId: 'Elena', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
     teacherPersona: {
       name: 'Anastasia',
       age: 34,
@@ -921,6 +972,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Russian tutor who loves teaching through Moscow life, classical literature, and Russian cuisine',
     },
     exampleTopics: ['Moscow and St. Petersburg', 'Tolstoy, Dostoevsky and Russian literature', 'borscht, pelmeni and Russian food'],
+    disfluencies: ['ну', 'это', 'как бы'],
   },
 
   sr: {
@@ -938,6 +990,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Serbian tutor passionate about Belgrade nightlife, Balkan music, and Serbian traditions',
     },
     exampleTopics: ['Belgrade nightlife and Novi Sad', 'ćevapi, ajvar and Serbian food', 'Exit Festival and Balkan music'],
+    disfluencies: ['ovaj', 'znaš', 'pa'],
   },
 
   sk: {
@@ -955,6 +1008,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Slovak tutor who loves Bratislava, the Tatra mountains, and Slovak folk traditions',
     },
     exampleTopics: ['Bratislava and the High Tatras', 'bryndzové halušky and Slovak cuisine', 'wooden churches and folk music'],
+    disfluencies: ['no', 'akože', 'proste'],
   },
 
   sl: {
@@ -972,6 +1026,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Slovenian tutor passionate about Ljubljana, Lake Bled, and Julian Alps hiking',
     },
     exampleTopics: ['Ljubljana and Lake Bled', 'potica and Slovenian cuisine', 'Julian Alps and Postojna caves'],
+    disfluencies: ['no', 'pač', 'a veš'],
   },
 
   sw: {
@@ -989,6 +1044,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Kenyan tutor who loves teaching Swahili through Nairobi life, coastal Lamu, and East African culture',
     },
     exampleTopics: ['Nairobi and the Maasai Mara', 'ugali, nyama choma and East African food', 'Swahili coastal culture and Lamu'],
+    disfluencies: ['eee', 'yaani', 'basi'],
   },
 
   sv: {
@@ -1006,6 +1062,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Swedish tutor passionate about Stockholm, fika culture, and the Swedish countryside',
     },
     exampleTopics: ['Stockholm archipelago', 'fika and Swedish coffee culture', 'midsummer and Swedish traditions'],
+    disfluencies: ['öh', 'liksom', 'alltså'],
   },
 
   ta: {
@@ -1023,6 +1080,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Tamil tutor who loves teaching through Chennai life, Tamil cinema, and South Indian temples',
     },
     exampleTopics: ['Chennai and Madurai temples', 'idli, dosa and Tamil cuisine', 'Tamil cinema and Carnatic music'],
+    disfluencies: ['அதான்', 'அப்பா', 'என்ன'],
   },
 
   te: {
@@ -1040,6 +1098,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Telugu tutor passionate about Hyderabad, biryani, and Tollywood cinema',
     },
     exampleTopics: ['Hyderabad and the Charminar', 'Hyderabadi biryani and Andhra cuisine', 'Tollywood films and Telugu poetry'],
+    disfluencies: ['అంటే', 'అదే', 'అరె'],
   },
 
   th: {
@@ -1057,6 +1116,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Thai tutor who loves teaching through Bangkok markets, island life, and Thai food culture',
     },
     exampleTopics: ['Bangkok and Chiang Mai', 'pad thai, tom yum and Thai street food', 'Thai islands and beaches'],
+    disfluencies: ['เอ่อ', 'แบบ', 'คือ'],
   },
 
   tr: {
@@ -1074,6 +1134,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Turkish tutor passionate about Istanbul, Anatolian history, and Turkish cuisine',
     },
     exampleTopics: ['Istanbul and the Bosphorus', 'kebabs, mezes and Turkish breakfasts', 'Cappadocia and Turkish coast'],
+    disfluencies: ['şey', 'yani', 'işte'],
   },
 
   uk: {
@@ -1091,6 +1152,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Ukrainian tutor who loves teaching through Kyiv, Lviv coffee houses, and Ukrainian folk traditions',
     },
     exampleTopics: ['Kyiv and Lviv', 'borscht, varenyky and Ukrainian cuisine', 'Ukrainian folk songs and embroidery'],
+    disfluencies: ['ну', 'це', 'тобто'],
   },
 
   ur: {
@@ -1108,6 +1170,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Pakistani tutor passionate about Lahore, Urdu poetry (ghazals), and Mughlai cuisine',
     },
     exampleTopics: ['Lahore and Karachi', 'Urdu ghazals and shayari', 'biryani, nihari and Mughlai food'],
+    disfluencies: ['یعنی', 'مطلب', 'وہ'],
   },
 
   vi: {
@@ -1125,6 +1188,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Vietnamese tutor who loves teaching through Hanoi street food, Hạ Long Bay, and Vietnamese coffee culture',
     },
     exampleTopics: ['Hanoi and Ho Chi Minh City', 'phở, bánh mì and Vietnamese street food', 'Hạ Long Bay and the Mekong Delta'],
+    disfluencies: ['ờ', 'thì', 'cái'],
   },
 
   cy: {
@@ -1142,6 +1206,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Welsh tutor passionate about Cardiff, Snowdonia hiking, and Welsh poetry traditions',
     },
     exampleTopics: ['Cardiff and the Welsh valleys', 'Snowdonia and the coastal path', 'cawl, Welsh cakes and male voice choirs'],
+    disfluencies: ['ym', 'wel', "ti'n gwybod"],
   },
 };
 

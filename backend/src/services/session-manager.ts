@@ -23,6 +23,19 @@ export interface SessionManagerOptions {
   languageCode: string;
 }
 
+/**
+ * Remove TTS-2 control tags from text the user will see/persist:
+ * steering tags ([speak ...]) and non-verbal tags ([laugh], [sigh], ...).
+ * Disfluencies are plain inline text and are not bracketed, so they survive.
+ */
+export function stripBracketedTags(text: string): string {
+  return text
+    .replace(/\[[^\][]*\]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ ([,.!?;:])/g, '$1')
+    .trim();
+}
+
 export class SessionManager {
   private ws: ClientWebSocket;
   private inworldWs: WebSocket | null = null;
@@ -37,6 +50,8 @@ export class SessionManager {
   private greetingItemId: string | null = null;
   /** Buffer for accumulating partial transcription deltas (incremental) */
   private userTextBuffer = '';
+  /** Held-back tail of an in-flight assistant chunk that may be the start of a `[...]` tag */
+  private assistantPendingTail = '';
 
   constructor(opts: SessionManagerOptions) {
     this.ws = opts.ws;
@@ -223,6 +238,7 @@ export class SessionManager {
       case 'input_audio_buffer.speech_started':
         // Cancel any in-progress agent response (matches Inworld playground)
         this.inworldSend({ type: 'response.cancel' });
+        this.assistantPendingTail = '';
         this.wsSend({ type: 'speech_detected', data: {} });
         this.wsSend({ type: 'interrupt', reason: 'speech_start' });
         break;
@@ -269,11 +285,14 @@ export class SessionManager {
       case 'response.output_audio_transcript.delta': {
         const delta = event.delta as string;
         if (delta) {
-          this.wsSend({
-            type: 'llm_response_chunk',
-            text: delta,
-            timestamp: Date.now(),
-          });
+          const cleanedDelta = this.consumeAssistantDelta(delta);
+          if (cleanedDelta) {
+            this.wsSend({
+              type: 'llm_response_chunk',
+              text: cleanedDelta,
+              timestamp: Date.now(),
+            });
+          }
         }
         break;
       }
@@ -293,11 +312,14 @@ export class SessionManager {
 
       case 'response.output_audio_transcript.done': {
         const transcript = event.transcript as string;
+        // Reset streaming-strip state regardless of whether transcript is present
+        this.assistantPendingTail = '';
         if (transcript) {
-          this.trackAssistantMessage(transcript);
+          const cleanedTranscript = stripBracketedTags(transcript);
+          this.trackAssistantMessage(cleanedTranscript);
           this.wsSend({
             type: 'llm_response_complete',
-            text: transcript,
+            text: cleanedTranscript,
             timestamp: Date.now(),
           });
         }
@@ -349,8 +371,15 @@ export class SessionManager {
   }
 
   private sendSessionUpdate(): void {
-    const { teacherPersona, name, exampleTopics, ttsConfig, code, bcp47 } =
-      this.langConfig;
+    const {
+      teacherPersona,
+      name,
+      exampleTopics,
+      ttsConfig,
+      code,
+      bcp47,
+      disfluencies,
+    } = this.langConfig;
     const memoryContext = this.memory.getContext();
 
     let instructions = `# Context
@@ -367,7 +396,13 @@ export class SessionManager {
 # Communication Style
 - Short, spoken-style sentences — never more than 2 sentences
 - The user's speech comes via speech-to-text, so tolerate transcription errors
-- Ask open-ended questions to get them practicing ${name}`;
+- Ask open-ended questions to get them practicing ${name}
+
+# Voice & expressivity (TTS-2)
+- You may start a turn with ONE English steering tag in brackets, e.g. [speak conversationally], [speak warmly], [speak with light curiosity]. Always English, verb-led, optional.
+- Occasionally (zero or one per turn) include an English non-verbal tag inline: [laugh], [sigh], [clear throat], [gasp], [yawn]. Use only when genuinely warranted — never as decoration.
+- For natural hesitation, use disfluencies in ${name} INLINE (no brackets). Examples: ${disfluencies.join(', ')}. Use 0–2 per turn, only when thinking, never on emphatic statements.
+- Steering and non-verbal tags stay English even though you speak ${name} — they are voice directions, not spoken text. The disfluencies above ARE spoken aloud, so they MUST match ${name}.`;
 
     if (memoryContext) {
       instructions += `\n\n# Recent Conversation Context\n${memoryContext}`;
@@ -437,6 +472,31 @@ export class SessionManager {
       );
       this.lastUserText = '';
     }
+  }
+
+  /**
+   * Strip bracketed control tags from streaming assistant deltas.
+   *
+   * A `[...]` tag may straddle two deltas (e.g. `"...[spe"` then `"ak warmly] ..."`).
+   * We hold back any trailing `[` that hasn't been closed yet, then re-process it
+   * on the next delta. Returns the cleaned text safe to emit as a chunk now —
+   * brackets removed only; whitespace/punctuation normalization is deferred
+   * to the final `.done` pass so chunk concatenation doesn't lose word breaks.
+   */
+  private consumeAssistantDelta(delta: string): string {
+    const combined = this.assistantPendingTail + delta;
+    const lastOpen = combined.lastIndexOf('[');
+    const lastClose = combined.lastIndexOf(']');
+
+    let safe: string;
+    if (lastOpen > lastClose) {
+      safe = combined.slice(0, lastOpen);
+      this.assistantPendingTail = combined.slice(lastOpen);
+    } else {
+      safe = combined;
+      this.assistantPendingTail = '';
+    }
+    return safe.replace(/\[[^\][]*\]/g, '');
   }
 
   private async reconnect(): Promise<void> {

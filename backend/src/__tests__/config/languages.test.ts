@@ -55,6 +55,8 @@ describe('languages config', () => {
         expect(config.teacherPersona).toBeDefined();
         expect(config.teacherPersona.name).toBeTruthy();
         expect(config.exampleTopics.length).toBeGreaterThan(0);
+        expect(Array.isArray(config.disfluencies)).toBe(true);
+        expect(config.disfluencies.length).toBeGreaterThanOrEqual(1);
       }
     });
   });
