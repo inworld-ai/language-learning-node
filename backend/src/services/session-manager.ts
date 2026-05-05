@@ -411,7 +411,7 @@ export class SessionManager {
     this.inworldSend({
       type: 'session.update',
       session: {
-        model: 'openai/gpt-4.1-nano',
+        model: 'openai/gpt-5.4-mini',
         instructions,
         output_modalities: ['audio', 'text'],
         audio: {

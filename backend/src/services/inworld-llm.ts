@@ -188,7 +188,7 @@ Text: ${text}`;
           Authorization: `Basic ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-4.1-nano',
+          model: 'openai/gpt-5.4-mini',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: maxTokens,
           temperature,

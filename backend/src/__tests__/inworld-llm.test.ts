@@ -252,7 +252,7 @@ describe('InworldLLM', () => {
       );
 
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
-      expect(body.model).toBe('openai/gpt-4.1-nano');
+      expect(body.model).toBe('openai/gpt-5.4-mini');
       expect(body.messages[0].role).toBe('user');
       expect(body.max_tokens).toBeDefined();
       expect(body.temperature).toBeDefined();

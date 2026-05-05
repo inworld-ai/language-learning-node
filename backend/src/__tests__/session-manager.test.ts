@@ -471,7 +471,7 @@ describe('SessionManager', () => {
       );
       expect(sent.session.audio.input.transcription.language).toBe('es');
       expect(sent.session.providerData.tts.language).toBe('es-MX');
-      expect(sent.session.model).toBe('openai/gpt-4.1-nano');
+      expect(sent.session.model).toBe('openai/gpt-5.4-mini');
     });
 
     it('should strip steering and non-verbal tags from completed assistant transcript', () => {
