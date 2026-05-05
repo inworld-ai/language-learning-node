@@ -1,19 +1,28 @@
 import type { IOSAudioHandler } from '../types';
+import type { AudioPipeline } from './AudioPipeline';
 
 type EventCallback = (data: string) => void;
 
+const CAPTURE_SAMPLE_RATE = 24000;
+
+/** getUserMedia constraints with the optional Chrome-only AEC hint. */
+type MicConstraints = MediaTrackConstraints & {
+  suppressLocalAudioPlayback?: { ideal: boolean };
+};
+
 export class AudioHandler {
+  private pipeline: AudioPipeline | null;
   private audioContext: AudioContext | null = null;
   private workletNode: AudioWorkletNode | null = null;
-  private scriptProcessor: ScriptProcessorNode | null = null;
   private stream: MediaStream | null = null;
-  private microphone: MediaStreamAudioSourceNode | null = null;
+  private recordSourceNode: MediaStreamAudioSourceNode | null = null;
   private isStreaming = false;
   private listeners = new Map<string, EventCallback[]>();
   private isIOS: boolean;
   private iosHandler: IOSAudioHandler | null;
 
-  constructor() {
+  constructor(pipeline?: AudioPipeline) {
+    this.pipeline = pipeline ?? null;
     this.isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -74,7 +83,7 @@ export class AudioHandler {
     try {
       console.log('Starting continuous audio streaming...');
 
-      // Use iOS handler if available
+      // iOS path is unchanged — its native handler manages mic + AEC.
       if (this.isIOS && this.iosHandler) {
         console.log('[AudioHandler] Using iOS audio handler for microphone');
 
@@ -93,41 +102,50 @@ export class AudioHandler {
         }
       }
 
-      // Fallback to standard implementation
-      const constraints = {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-        },
+      const useLoopback = !!this.pipeline;
+      const constraints: MicConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+        sampleRate: CAPTURE_SAMPLE_RATE,
       };
+      if (useLoopback) {
+        // Chrome-only hint: tells the browser to NOT apply its built-in playback
+        // suppression so our WebRTC loopback can deliver an explicit reference
+        // signal to the AEC. No-op on browsers that don't recognize it.
+        constraints.suppressLocalAudioPlayback = { ideal: true };
+      }
 
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: constraints,
+      });
       console.log('Microphone access granted for continuous streaming');
 
+      // Capture AudioContext at 24kHz: matches our target rate so the worklet
+      // doesn't have to resample on every render quantum.
       this.audioContext = new (
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext
-      )();
+      )({ sampleRate: CAPTURE_SAMPLE_RATE });
 
       if (this.audioContext.state === 'suspended') {
         console.log('Audio context suspended, resuming...');
         await this.audioContext.resume();
       }
 
-      this.microphone = this.audioContext.createMediaStreamSource(this.stream);
+      // If a pipeline is wired up, route through the WebRTC loopback so Chrome's
+      // AEC sees the playback as a reference signal. Returns the AEC-processed
+      // mic stream — or the original stream if the browser doesn't support it.
+      const recordStream = useLoopback
+        ? await this.pipeline!.enableLoopback(this.stream)
+        : this.stream;
 
-      // Try AudioWorklet first, fallback to ScriptProcessorNode
-      if (this.audioContext.audioWorklet) {
-        console.log('Setting up AudioWorklet processor...');
-        await this.setupAudioWorklet();
-      } else {
-        console.log('AudioWorklet not supported, using ScriptProcessorNode...');
-        this.setupScriptProcessorNode();
-      }
+      this.recordSourceNode =
+        this.audioContext.createMediaStreamSource(recordStream);
 
+      await this.setupAudioWorklet();
       this.isStreaming = true;
       console.log('Continuous audio streaming started');
     } catch (error) {
@@ -137,149 +155,65 @@ export class AudioHandler {
   }
 
   private async setupAudioWorklet(): Promise<void> {
-    if (!this.audioContext || !this.microphone) return;
+    if (!this.audioContext || !this.recordSourceNode) return;
 
-    try {
-      await this.audioContext.audioWorklet.addModule('/audio-processor.js');
-      console.log('AudioWorklet processor loaded');
+    await this.audioContext.audioWorklet.addModule('/audio-processor.js');
+    console.log('AudioWorklet processor loaded');
 
-      this.workletNode = new AudioWorkletNode(
-        this.audioContext,
-        'audio-processor',
-        {
-          processorOptions: {
-            sourceSampleRate: this.audioContext.sampleRate,
-          },
-        }
-      );
-
-      this.workletNode.port.onmessage = (event: MessageEvent) => {
-        if (this.isStreaming) {
-          const int16Buffer = event.data as ArrayBuffer;
-          const base64Audio = btoa(
-            String.fromCharCode(...new Uint8Array(int16Buffer))
-          );
-          this.emit('audioChunk', base64Audio);
-        }
-      };
-
-      this.microphone.connect(this.workletNode);
-      this.workletNode.connect(this.audioContext.destination);
-    } catch (error) {
-      console.error('Error loading AudioWorklet processor:', error);
-      this.setupScriptProcessorNode();
-    }
-  }
-
-  private setupScriptProcessorNode(): void {
-    if (!this.audioContext || !this.microphone) return;
-
-    console.log('Setting up ScriptProcessorNode for compatibility...');
-
-    const bufferSize = 4096;
-    this.scriptProcessor = this.audioContext.createScriptProcessor(
-      bufferSize,
-      1,
-      1
+    this.workletNode = new AudioWorkletNode(
+      this.audioContext,
+      'audio-processor',
+      { channelCount: 1 }
     );
 
-    const targetSampleRate = 24000;
-    const sourceSampleRate = this.audioContext.sampleRate;
-    const resampleRatio = sourceSampleRate / targetSampleRate;
-    let buffer: Float32Array | null = null;
-
-    this.scriptProcessor.onaudioprocess = (event: AudioProcessingEvent) => {
+    this.workletNode.port.onmessage = (event: MessageEvent) => {
       if (this.isStreaming) {
-        const inputData = event.inputBuffer.getChannelData(0);
-
-        // Append new data to the buffer
-        const currentLength = buffer ? buffer.length : 0;
-        const newBuffer = new Float32Array(currentLength + inputData.length);
-        if (buffer) {
-          newBuffer.set(buffer, 0);
-        }
-        newBuffer.set(inputData, currentLength);
-        buffer = newBuffer;
-
-        // Resample to 16kHz
-        const numOutputSamples = Math.floor(buffer.length / resampleRatio);
-        if (numOutputSamples === 0) return;
-
-        const resampledData = new Float32Array(numOutputSamples);
-        for (let i = 0; i < numOutputSamples; i++) {
-          const correspondingInputIndex = i * resampleRatio;
-          const lowerIndex = Math.floor(correspondingInputIndex);
-          const upperIndex = Math.ceil(correspondingInputIndex);
-          const interpolationFactor = correspondingInputIndex - lowerIndex;
-
-          const lowerValue = buffer[lowerIndex] || 0;
-          const upperValue = buffer[upperIndex] || 0;
-
-          resampledData[i] =
-            lowerValue + (upperValue - lowerValue) * interpolationFactor;
-        }
-
-        // Save remainder for next process call
-        const consumedInputSamples = numOutputSamples * resampleRatio;
-        buffer = buffer.slice(Math.round(consumedInputSamples));
-
-        // Convert Float32Array to Int16Array
-        const int16Array = new Int16Array(resampledData.length);
-        for (let i = 0; i < resampledData.length; i++) {
-          int16Array[i] = Math.max(
-            -32768,
-            Math.min(32767, resampledData[i] * 32768)
-          );
-        }
-
+        const int16Buffer = event.data as ArrayBuffer;
         const base64Audio = btoa(
-          String.fromCharCode(...new Uint8Array(int16Array.buffer))
+          String.fromCharCode(...new Uint8Array(int16Buffer))
         );
         this.emit('audioChunk', base64Audio);
       }
     };
 
-    this.microphone.connect(this.scriptProcessor);
-    this.scriptProcessor.connect(this.audioContext.destination);
+    this.recordSourceNode.connect(this.workletNode);
+    this.workletNode.connect(this.audioContext.destination);
   }
 
   stopStreaming(): void {
     console.log('Stopping continuous audio streaming...');
     this.isStreaming = false;
 
-    // Use iOS handler if available
     if (this.isIOS && this.iosHandler) {
       this.iosHandler.stopMicrophone?.();
       console.log('[AudioHandler] iOS microphone stopped');
       return;
     }
 
-    // Standard cleanup
     if (this.workletNode) {
       this.workletNode.port.onmessage = null;
       this.workletNode.disconnect();
       this.workletNode = null;
     }
 
-    if (this.scriptProcessor) {
-      this.scriptProcessor.onaudioprocess = null;
-      this.scriptProcessor.disconnect();
-      this.scriptProcessor = null;
-    }
-
-    if (this.microphone) {
-      this.microphone.disconnect();
-      this.microphone = null;
+    if (this.recordSourceNode) {
+      this.recordSourceNode.disconnect();
+      this.recordSourceNode = null;
     }
 
     if (this.audioContext) {
-      this.audioContext.close();
+      this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
 
     if (this.stream) {
       this.stream.getTracks().forEach((track) => track.stop());
       this.stream = null;
+    }
+
+    // Tear down the loopback so playback flows back through ctx.destination.
+    if (this.pipeline) {
+      this.pipeline.disableLoopback();
     }
 
     console.log('Continuous audio streaming stopped');
