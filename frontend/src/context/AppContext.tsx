@@ -22,6 +22,7 @@ import type {
 import { HybridStorage } from '../services/HybridStorage';
 import { WebSocketClient } from '../services/WebSocketClient';
 import { AudioHandler } from '../services/AudioHandler';
+import { AudioPipeline } from '../services/AudioPipeline';
 import { AudioPlayer } from '../services/AudioPlayer';
 import { useAuth } from './AuthContext';
 
@@ -291,11 +292,25 @@ export function AppProvider({ children }: AppProviderProps) {
     []
   );
   const wsClientRef = useRef(wsClientInstance);
-  const audioHandlerInstance = useMemo(() => new AudioHandler(), []);
+  // Shared audio pipeline — one playback context + one master output node so
+  // both AudioPlayer instances and the mic handler can be wired into a single
+  // WebRTC loopback for proper Chrome AEC.
+  const audioPipelineInstance = useMemo(() => new AudioPipeline(), []);
+  const audioPipelineRef = useRef(audioPipelineInstance);
+  const audioHandlerInstance = useMemo(
+    () => new AudioHandler(audioPipelineInstance),
+    [audioPipelineInstance]
+  );
   const audioHandlerRef = useRef(audioHandlerInstance);
-  const audioPlayerInstance = useMemo(() => new AudioPlayer(), []);
+  const audioPlayerInstance = useMemo(
+    () => new AudioPlayer(audioPipelineInstance),
+    [audioPipelineInstance]
+  );
   const audioPlayerRef = useRef(audioPlayerInstance);
-  const ttsAudioPlayerInstance = useMemo(() => new AudioPlayer(), []);
+  const ttsAudioPlayerInstance = useMemo(
+    () => new AudioPlayer(audioPipelineInstance),
+    [audioPipelineInstance]
+  );
   const ttsAudioPlayerRef = useRef(ttsAudioPlayerInstance);
   const hasMigratedRef = useRef(false);
   const conversationsLoadedRef = useRef(false);
@@ -412,11 +427,13 @@ export function AppProvider({ children }: AppProviderProps) {
   useEffect(() => {
     const audioPlayer = audioPlayerRef.current;
     const ttsAudioPlayer = ttsAudioPlayerRef.current;
+    const audioPipeline = audioPipelineRef.current;
     audioPlayer.initialize().catch(console.error);
     ttsAudioPlayer.initialize().catch(console.error);
     return () => {
       audioPlayer.destroy();
       ttsAudioPlayer.destroy();
+      audioPipeline.destroy();
     };
   }, []);
 

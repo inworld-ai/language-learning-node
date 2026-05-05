@@ -1,8 +1,10 @@
 import type { IOSAudioHandler } from '../types';
+import type { AudioPipeline } from './AudioPipeline';
 
 type EventCallback = () => void;
 
 export class AudioPlayer {
+  private pipeline: AudioPipeline | null;
   private audioContext: AudioContext | null = null;
   private gainNode: GainNode | null = null;
   private audioQueue: AudioBuffer[] = [];
@@ -17,10 +19,13 @@ export class AudioPlayer {
   private scheduledSources: AudioBufferSourceNode[] = [];
   private scheduleInterval: ReturnType<typeof setInterval> | null = null;
   private readonly SCHEDULE_AHEAD_TIME = 0.1;
-  /** Duration in seconds for fade-in/fade-out via GainNode */
-  private readonly FADE_DURATION = 0.015; // 15ms — smooth enough to kill clicks
+  /** Was 15ms. 25ms preserves the click-free fade while letting Chrome's AEC
+   *  re-converge faster on user interrupt — a non-zero reference signal during
+   *  a long fade distorts the mic input. */
+  private readonly FADE_DURATION = 0.025;
 
-  constructor() {
+  constructor(pipeline?: AudioPipeline) {
+    this.pipeline = pipeline ?? null;
     this.isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -47,11 +52,21 @@ export class AudioPlayer {
 
   async initialize(_sampleRate?: number): Promise<void> {
     try {
-      // Do NOT pass sampleRate to AudioContext — let it use the hardware's
-      // native rate (typically 48 kHz). Forcing a non-native rate (e.g. 24 kHz)
-      // makes the browser resample *all* output, which can introduce artifacts.
-      // Instead, each AudioBuffer declares its own sample rate via createBuffer()
-      // and the AudioContext resamples per-buffer transparently.
+      if (this.pipeline && !this.isIOS) {
+        // Share the pipeline's playback context so all audio routes through one
+        // master output node — required for the WebRTC loopback AEC to see a
+        // unified reference signal.
+        this.audioContext = this.pipeline.getPlaybackContext();
+        if (this.audioContext.state === 'suspended') {
+          await this.audioContext.resume();
+        }
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.gain.value = 0;
+        this.gainNode.connect(this.pipeline.getOutputNode());
+        return;
+      }
+
+      // iOS / no-pipeline fallback: each player owns its own context.
       this.audioContext = new (
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
@@ -62,12 +77,9 @@ export class AudioPlayer {
         await this.audioContext.resume();
       }
 
-      // Create a GainNode for smooth fade-in/out — all audio routes through this
       this.gainNode = this.audioContext.createGain();
-      this.gainNode.gain.value = 0; // Start silent
+      this.gainNode.gain.value = 0;
       this.gainNode.connect(this.audioContext.destination);
-
-      // Audio player initialized
     } catch (error) {
       console.error('Failed to initialize audio player:', error);
       throw error;
@@ -92,7 +104,6 @@ export class AudioPlayer {
       this.endStreaming();
     }, 1000);
 
-    // Use iOS handler if available
     if (this.isIOS && this.iosHandler) {
       try {
         await this.iosHandler.playAudioChunk?.(base64Audio, isLastChunk);
@@ -109,13 +120,11 @@ export class AudioPlayer {
       }
     }
 
-    // Standard implementation
     if (!this.audioContext || !this.gainNode) {
       await this.initialize(sampleRate);
     }
 
     try {
-      // Decode base64 to binary
       const binaryString = atob(base64Audio);
       let bytes = new Uint8Array(binaryString.length);
 
@@ -135,7 +144,6 @@ export class AudioPlayer {
         bytes = bytes.slice(44);
       }
 
-      // Create audio buffer (no per-chunk fade — GainNode handles envelope)
       const audioBuffer = await this.createAudioBuffer(
         bytes.buffer.slice(
           bytes.byteOffset,
@@ -147,7 +155,6 @@ export class AudioPlayer {
 
       this.audioQueue.push(audioBuffer);
 
-      // Start playback immediately if not already playing
       if (!this.isPlaying && !this.isStartingPlayback) {
         this.isStartingPlayback = true;
         this.fadeIn();
@@ -190,7 +197,6 @@ export class AudioPlayer {
 
       return audioBuffer;
     } else {
-      // Int16 PCM format
       const int16Array = new Int16Array(arrayBuffer);
       numSamples = int16Array.length;
 
@@ -248,7 +254,6 @@ export class AudioPlayer {
       this.nextStartTime = currentTime;
     }
 
-    // Schedule buffers that should start within SCHEDULE_AHEAD_TIME
     while (
       this.audioQueue.length > 0 &&
       this.nextStartTime < currentTime + this.SCHEDULE_AHEAD_TIME
@@ -264,7 +269,6 @@ export class AudioPlayer {
 
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
-    // Route through GainNode instead of directly to destination
     source.connect(this.gainNode);
 
     this.scheduledSources.push(source);
@@ -276,7 +280,6 @@ export class AudioPlayer {
       }
 
       if (this.scheduledSources.length === 0 && this.audioQueue.length === 0) {
-        // Fade out at the natural end of playback to prevent a click
         this.fadeOut(() => {
           this.isPlaying = false;
           this.stopScheduleInterval();
@@ -330,13 +333,11 @@ export class AudioPlayer {
   }
 
   private stopInternal(immediate: boolean): void {
-    // Clear stream timeout
     if (this.streamTimeout) {
       clearTimeout(this.streamTimeout);
       this.streamTimeout = null;
     }
 
-    // Use iOS handler if available
     if (this.isIOS && this.iosHandler) {
       this.iosHandler.stopAudioPlayback?.();
       this.isPlaying = false;
@@ -353,7 +354,7 @@ export class AudioPlayer {
           source.stop();
           source.disconnect();
         } catch {
-          // Source may have already ended
+          /* already stopped */
         }
       }
       this.scheduledSources = [];
@@ -376,14 +377,12 @@ export class AudioPlayer {
     };
 
     if (immediate) {
-      // Kill instantly — set gain to 0 with no ramp
       if (this.gainNode && this.audioContext) {
         this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
         this.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
       }
       killSources();
     } else {
-      // Graceful fade out
       this.fadeOut(killSources);
     }
   }
@@ -392,11 +391,21 @@ export class AudioPlayer {
     this.stop();
     this.stopScheduleInterval();
 
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
+    // Disconnect our gain node, but only close the context if we own it.
+    // When using a shared AudioPipeline, the pipeline owns the context and
+    // closing it here would break the other AudioPlayer.
+    if (this.gainNode) {
+      try {
+        this.gainNode.disconnect();
+      } catch {
+        /* not connected */
+      }
+      this.gainNode = null;
     }
-    this.gainNode = null;
+    if (this.audioContext && !this.pipeline) {
+      this.audioContext.close().catch(() => {});
+    }
+    this.audioContext = null;
 
     this.listeners.clear();
   }
@@ -407,8 +416,6 @@ export class AudioPlayer {
       this.streamTimeout = null;
     }
 
-    // If sources are still scheduled, onended handlers will fade out + emit.
-    // If nothing is playing or queued, emit finished immediately.
     if (this.scheduledSources.length === 0 && this.audioQueue.length === 0) {
       if (this.isPlaying) {
         this.fadeOut(() => {
@@ -418,6 +425,5 @@ export class AudioPlayer {
         });
       }
     }
-    // Otherwise: let the last source's onended handle cleanup.
   }
 }

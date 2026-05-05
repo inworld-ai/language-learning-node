@@ -252,7 +252,7 @@ describe('InworldLLM', () => {
       );
 
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
-      expect(body.model).toBe('openai/gpt-4.1-nano');
+      expect(body.model).toBe('openai/gpt-5.4-mini');
       expect(body.messages[0].role).toBe('user');
       expect(body.max_tokens).toBeDefined();
       expect(body.temperature).toBeDefined();
@@ -295,7 +295,12 @@ describe('InworldLLM', () => {
         json: async () => ({ audioContent: 'base64audiodata==' }),
       } as Response);
 
-      const audio = await llm.pronounce('Hola', 'Rafael');
+      const audio = await llm.pronounce(
+        'Hola',
+        'Rafael',
+        'es-MX',
+        'inworld-tts-2'
+      );
       expect(audio).toBe('base64audiodata==');
     });
 
@@ -305,7 +310,7 @@ describe('InworldLLM', () => {
         json: async () => ({ audioContent: 'audio' }),
       } as Response);
 
-      await llm.pronounce('perro', 'Rafael');
+      await llm.pronounce('perro', 'Rafael', 'es-MX', 'inworld-tts-2');
 
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.inworld.ai/tts/v1/voice',
@@ -315,7 +320,8 @@ describe('InworldLLM', () => {
       const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
       expect(body.text).toBe('perro');
       expect(body.voice_id).toBe('Rafael');
-      expect(body.model_id).toBe('inworld-tts-1.5-max');
+      expect(body.model_id).toBe('inworld-tts-2');
+      expect(body.language).toBe('es-MX');
       expect(body.audio_config.audio_encoding).toBe('LINEAR16');
       expect(body.audio_config.sample_rate_hertz).toBe(24000);
     });
@@ -326,7 +332,12 @@ describe('InworldLLM', () => {
         status: 500,
       } as Response);
 
-      const audio = await llm.pronounce('Hola', 'Rafael');
+      const audio = await llm.pronounce(
+        'Hola',
+        'Rafael',
+        'es-MX',
+        'inworld-tts-2'
+      );
       expect(audio).toBeNull();
     });
 
@@ -334,7 +345,12 @@ describe('InworldLLM', () => {
       process.env.INWORLD_API_KEY = '';
       const noKeyLlm = new InworldLLM();
 
-      const audio = await noKeyLlm.pronounce('Hola', 'Rafael');
+      const audio = await noKeyLlm.pronounce(
+        'Hola',
+        'Rafael',
+        'es-MX',
+        'inworld-tts-2'
+      );
       expect(audio).toBeNull();
     });
   });

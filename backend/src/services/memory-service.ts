@@ -257,7 +257,7 @@ Rules:
           Authorization: `Basic ${process.env.INWORLD_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-4.1-nano',
+          model: 'openai/gpt-5.4-mini',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 200,
           temperature: 0.7,

@@ -48,13 +48,15 @@ describe('languages config', () => {
         expect(config.name).toBeTruthy();
         expect(config.nativeName).toBeTruthy();
         expect(config.flag).toBeTruthy();
-        expect(config.sttLanguageCode).toBeTruthy();
+        expect(config.bcp47).toBeTruthy();
         expect(config.ttsConfig).toBeDefined();
         expect(config.ttsConfig.speakerId).toBeTruthy();
         expect(config.ttsConfig.modelId).toBeTruthy();
         expect(config.teacherPersona).toBeDefined();
         expect(config.teacherPersona.name).toBeTruthy();
         expect(config.exampleTopics.length).toBeGreaterThan(0);
+        expect(Array.isArray(config.disfluencies)).toBe(true);
+        expect(config.disfluencies.length).toBeGreaterThanOrEqual(1);
       }
     });
   });

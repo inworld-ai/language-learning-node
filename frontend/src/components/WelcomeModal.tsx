@@ -51,7 +51,7 @@ export function WelcomeModal() {
           <span>Auto flashcards</span>
         </div>
         <div className="welcome-feature">
-          <span>6 languages</span>
+          <span>60+ languages</span>
         </div>
       </div>
       <button className="welcome-cta" onClick={dismiss}>

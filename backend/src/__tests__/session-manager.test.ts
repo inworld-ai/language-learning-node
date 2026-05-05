@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import WebSocket from 'ws';
-import { SessionManager } from '../services/session-manager.js';
+import {
+  SessionManager,
+  stripBracketedTags,
+} from '../services/session-manager.js';
 
 // Mock ws module so SessionManager doesn't make real connections
 vi.mock('ws', () => {
@@ -24,6 +27,40 @@ function createMockClientWs() {
     _messages: messages,
   } as unknown as WebSocket;
 }
+
+describe('stripBracketedTags', () => {
+  it('removes a leading steering tag and trims', () => {
+    expect(stripBracketedTags('[speak warmly] Hello there')).toBe(
+      'Hello there'
+    );
+  });
+
+  it('removes inline non-verbal tags', () => {
+    expect(stripBracketedTags('That is funny [laugh] really')).toBe(
+      'That is funny really'
+    );
+  });
+
+  it('collapses double spaces left by removed tags', () => {
+    expect(stripBracketedTags('one [tag] two')).toBe('one two');
+  });
+
+  it('removes the space before punctuation when a tag preceded it', () => {
+    expect(stripBracketedTags('Hello [laugh] , how are you')).toBe(
+      'Hello, how are you'
+    );
+  });
+
+  it('preserves disfluency text (no brackets) untouched', () => {
+    expect(stripBracketedTags('えーと、そうですね')).toBe('えーと、そうですね');
+  });
+
+  it('handles multiple bracketed tags in one string', () => {
+    expect(
+      stripBracketedTags('[speak gently] Pues [sigh] no sé qué decir')
+    ).toBe('Pues no sé qué decir');
+  });
+});
 
 describe('SessionManager', () => {
   const originalEnv = process.env.INWORLD_API_KEY;
@@ -281,7 +318,7 @@ describe('SessionManager', () => {
   });
 
   describe('streaming STT events', () => {
-    it('should accumulate transcription deltas incrementally', () => {
+    it('should treat transcription deltas as cumulative (Soniox)', () => {
       const clientWs = createMockClientWs();
       const mgr = new SessionManager({
         sessionId: 'test-stt-1',
@@ -298,12 +335,12 @@ describe('SessionManager', () => {
 
       handler.call(mgr, {
         type: 'conversation.item.input_audio_transcription.delta',
-        delta: 'Hola, ',
+        delta: 'Hola',
       });
 
       handler.call(mgr, {
         type: 'conversation.item.input_audio_transcription.delta',
-        delta: 'me llamo Cale.',
+        delta: 'Hola, me llamo Cale.',
       });
 
       const sent = (clientWs as unknown as { _messages: string[] })._messages;
@@ -313,7 +350,7 @@ describe('SessionManager', () => {
           (m: Record<string, unknown>) => m.type === 'partial_transcript'
         );
       expect(partials).toHaveLength(2);
-      expect(partials[0].text).toBe('Hola, ');
+      expect(partials[0].text).toBe('Hola');
       expect(partials[1].text).toBe('Hola, me llamo Cale.');
     });
 
@@ -430,10 +467,112 @@ describe('SessionManager', () => {
       const sent = JSON.parse(mockInworldWs.send.mock.calls[0][0]);
       expect(sent.type).toBe('session.update');
       expect(sent.session.audio.input.transcription.model).toBe(
-        'assemblyai/u3-rt-pro'
+        'soniox/stt-rt-v4'
       );
-      expect(sent.session.audio.input.transcription.language).toBe('es-MX');
-      expect(sent.session.model).toBe('openai/gpt-4.1-nano');
+      expect(sent.session.audio.input.transcription.language).toBe('es');
+      expect(sent.session.providerData.tts.language).toBe('es-MX');
+      expect(sent.session.model).toBe('openai/gpt-5.4-mini');
+    });
+
+    it('should strip steering and non-verbal tags from completed assistant transcript', () => {
+      const clientWs = createMockClientWs();
+      const mgr = new SessionManager({
+        sessionId: 'test-strip-1',
+        ws: clientWs,
+        languageCode: 'ja',
+      });
+
+      const mgrAny = mgr as unknown as Record<string, unknown>;
+      mgrAny.sessionReady = true;
+
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
+      handler.call(mgr, {
+        type: 'response.output_audio_transcript.done',
+        transcript:
+          '[speak gently] なるほど、忙しいですね。[laugh] 趣味はありますか？',
+      });
+
+      const sent = (clientWs as unknown as { _messages: string[] })._messages;
+      const completes = sent
+        .map((m) => JSON.parse(m))
+        .filter(
+          (m: Record<string, unknown>) => m.type === 'llm_response_complete'
+        );
+      expect(completes).toHaveLength(1);
+      expect(completes[0].text).not.toContain('[');
+      expect(completes[0].text).not.toContain(']');
+      expect(completes[0].text).toContain('なるほど');
+      expect(completes[0].text).toContain('趣味はありますか');
+    });
+
+    it('should strip a bracketed tag that straddles two streaming deltas', () => {
+      const clientWs = createMockClientWs();
+      const mgr = new SessionManager({
+        sessionId: 'test-strip-2',
+        ws: clientWs,
+        languageCode: 'es',
+      });
+
+      const mgrAny = mgr as unknown as Record<string, unknown>;
+      mgrAny.sessionReady = true;
+
+      const handler = mgrAny.handleInworldEvent as (
+        event: Record<string, unknown>
+      ) => void;
+
+      handler.call(mgr, {
+        type: 'response.output_audio_transcript.delta',
+        delta: 'Hola, [spe',
+      });
+      handler.call(mgr, {
+        type: 'response.output_audio_transcript.delta',
+        delta: 'ak warmly] ¿qué tal?',
+      });
+
+      const sent = (clientWs as unknown as { _messages: string[] })._messages;
+      const chunks = sent
+        .map((m) => JSON.parse(m))
+        .filter(
+          (m: Record<string, unknown>) => m.type === 'llm_response_chunk'
+        );
+      const concatenated = chunks.map((c) => c.text).join('');
+      expect(concatenated).not.toContain('[');
+      expect(concatenated).not.toContain(']');
+      expect(concatenated).toContain('Hola');
+      expect(concatenated).toContain('¿qué tal?');
+    });
+
+    it('should include TTS-2 expressivity guidance with steering, nonverbal, and target-language disfluencies', () => {
+      const clientWs = createMockClientWs();
+      const mgr = new SessionManager({
+        sessionId: 'test-expressivity-1',
+        ws: clientWs,
+        languageCode: 'es',
+      });
+
+      const mgrAny = mgr as unknown as Record<string, unknown>;
+      const mockInworldWs = {
+        readyState: 1,
+        send: vi.fn(),
+        on: vi.fn(),
+        close: vi.fn(),
+      };
+      mgrAny.inworldWs = mockInworldWs;
+
+      const sendUpdate = mgrAny.sendSessionUpdate as () => void;
+      sendUpdate.call(mgr);
+
+      const sent = JSON.parse(mockInworldWs.send.mock.calls[0][0]);
+      const instructions = sent.session.instructions as string;
+
+      // Steering tag example
+      expect(instructions).toContain('[speak');
+      // Non-verbal tag
+      expect(instructions).toContain('[laugh]');
+      // Spanish disfluency from the seeded list
+      expect(instructions).toContain('este');
     });
   });
 });

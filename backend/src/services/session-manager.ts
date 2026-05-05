@@ -23,6 +23,19 @@ export interface SessionManagerOptions {
   languageCode: string;
 }
 
+/**
+ * Remove TTS-2 control tags from text the user will see/persist:
+ * steering tags ([speak ...]) and non-verbal tags ([laugh], [sigh], ...).
+ * Disfluencies are plain inline text and are not bracketed, so they survive.
+ */
+export function stripBracketedTags(text: string): string {
+  return text
+    .replace(/\[[^\][]*\]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ ([,.!?;:])/g, '$1')
+    .trim();
+}
+
 export class SessionManager {
   private ws: ClientWebSocket;
   private inworldWs: WebSocket | null = null;
@@ -37,6 +50,8 @@ export class SessionManager {
   private greetingItemId: string | null = null;
   /** Buffer for accumulating partial transcription deltas (incremental) */
   private userTextBuffer = '';
+  /** Held-back tail of an in-flight assistant chunk that may be the start of a `[...]` tag */
+  private assistantPendingTail = '';
 
   constructor(opts: SessionManagerOptions) {
     this.ws = opts.ws;
@@ -223,6 +238,7 @@ export class SessionManager {
       case 'input_audio_buffer.speech_started':
         // Cancel any in-progress agent response (matches Inworld playground)
         this.inworldSend({ type: 'response.cancel' });
+        this.assistantPendingTail = '';
         this.wsSend({ type: 'speech_detected', data: {} });
         this.wsSend({ type: 'interrupt', reason: 'speech_start' });
         break;
@@ -236,10 +252,11 @@ export class SessionManager {
         break;
 
       case 'conversation.item.input_audio_transcription.delta': {
-        // Deltas are INCREMENTAL — accumulate into buffer (matches Inworld playground)
+        // Soniox emits CUMULATIVE deltas — each delta is the full transcript
+        // so far, not just new tokens. Replace the buffer rather than appending.
         const partialDelta = event.delta as string;
         if (partialDelta) {
-          this.userTextBuffer += partialDelta;
+          this.userTextBuffer = partialDelta;
           this.wsSend({
             type: 'partial_transcript',
             text: this.userTextBuffer,
@@ -268,11 +285,14 @@ export class SessionManager {
       case 'response.output_audio_transcript.delta': {
         const delta = event.delta as string;
         if (delta) {
-          this.wsSend({
-            type: 'llm_response_chunk',
-            text: delta,
-            timestamp: Date.now(),
-          });
+          const cleanedDelta = this.consumeAssistantDelta(delta);
+          if (cleanedDelta) {
+            this.wsSend({
+              type: 'llm_response_chunk',
+              text: cleanedDelta,
+              timestamp: Date.now(),
+            });
+          }
         }
         break;
       }
@@ -292,11 +312,14 @@ export class SessionManager {
 
       case 'response.output_audio_transcript.done': {
         const transcript = event.transcript as string;
+        // Reset streaming-strip state regardless of whether transcript is present
+        this.assistantPendingTail = '';
         if (transcript) {
-          this.trackAssistantMessage(transcript);
+          const cleanedTranscript = stripBracketedTags(transcript);
+          this.trackAssistantMessage(cleanedTranscript);
           this.wsSend({
             type: 'llm_response_complete',
-            text: transcript,
+            text: cleanedTranscript,
             timestamp: Date.now(),
           });
         }
@@ -348,8 +371,15 @@ export class SessionManager {
   }
 
   private sendSessionUpdate(): void {
-    const { teacherPersona, name, exampleTopics, ttsConfig, sttLanguageCode } =
-      this.langConfig;
+    const {
+      teacherPersona,
+      name,
+      exampleTopics,
+      ttsConfig,
+      code,
+      bcp47,
+      disfluencies,
+    } = this.langConfig;
     const memoryContext = this.memory.getContext();
 
     let instructions = `# Context
@@ -366,7 +396,15 @@ export class SessionManager {
 # Communication Style
 - Short, spoken-style sentences — never more than 2 sentences
 - The user's speech comes via speech-to-text, so tolerate transcription errors
-- Ask open-ended questions to get them practicing ${name}`;
+- Ask open-ended questions to get them practicing ${name}
+
+# Voice & expressivity (TTS-2)
+- Sound like a real person thinking out loud: include 1–2 natural ${name} disfluencies in MOST responses. Examples for ${name} include ${disfluencies.join(', ')} — these are seeds, NOT an exhaustive list. Any common ${name} filler/hesitation word (or short hedging phrase) is welcome too.
+- VARY which disfluency you use. Never reuse the same one in consecutive responses, and don't lean on the single most generic one every turn — rotate across the natural range. Repeating "um" turn after turn sounds robotic.
+- Disfluencies are plain inline ${name} text (no brackets) and ARE spoken aloud. They work well to open a turn or pivot between clauses. Don't force them onto emphatic, excited, or one-word responses.
+- Optionally start a turn with ONE English steering tag in brackets, e.g. [speak conversationally], [speak warmly], [speak with light curiosity]. These direct your voice but are NOT spoken aloud.
+- Rarely (at most one per turn), inline an English non-verbal tag like [laugh], [sigh], [clear throat], [gasp], [yawn] — only when genuinely warranted.
+- Bracketed tags are always English voice directions and are silent. Disfluencies are ${name} text and ARE spoken — never bracket them.`;
 
     if (memoryContext) {
       instructions += `\n\n# Recent Conversation Context\n${memoryContext}`;
@@ -375,14 +413,14 @@ export class SessionManager {
     this.inworldSend({
       type: 'session.update',
       session: {
-        model: 'openai/gpt-4.1-nano',
+        model: 'openai/gpt-5.4-mini',
         instructions,
         output_modalities: ['audio', 'text'],
         audio: {
           input: {
             transcription: {
-              model: 'assemblyai/u3-rt-pro',
-              language: sttLanguageCode,
+              model: 'soniox/stt-rt-v4',
+              language: code,
             },
             turn_detection: {
               type: 'semantic_vad',
@@ -396,6 +434,9 @@ export class SessionManager {
             model: ttsConfig.modelId,
             speed: ttsConfig.speakingRate,
           },
+        },
+        providerData: {
+          tts: { language: bcp47 },
         },
       },
     });
@@ -433,6 +474,31 @@ export class SessionManager {
       );
       this.lastUserText = '';
     }
+  }
+
+  /**
+   * Strip bracketed control tags from streaming assistant deltas.
+   *
+   * A `[...]` tag may straddle two deltas (e.g. `"...[spe"` then `"ak warmly] ..."`).
+   * We hold back any trailing `[` that hasn't been closed yet, then re-process it
+   * on the next delta. Returns the cleaned text safe to emit as a chunk now —
+   * brackets removed only; whitespace/punctuation normalization is deferred
+   * to the final `.done` pass so chunk concatenation doesn't lose word breaks.
+   */
+  private consumeAssistantDelta(delta: string): string {
+    const combined = this.assistantPendingTail + delta;
+    const lastOpen = combined.lastIndexOf('[');
+    const lastClose = combined.lastIndexOf(']');
+
+    let safe: string;
+    if (lastOpen > lastClose) {
+      safe = combined.slice(0, lastOpen);
+      this.assistantPendingTail = combined.slice(lastOpen);
+    } else {
+      safe = combined;
+      this.assistantPendingTail = '';
+    }
+    return safe.replace(/\[[^\][]*\]/g, '');
   }
 
   private async reconnect(): Promise<void> {
