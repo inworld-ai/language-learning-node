@@ -295,7 +295,12 @@ describe('InworldLLM', () => {
         json: async () => ({ audioContent: 'base64audiodata==' }),
       } as Response);
 
-      const audio = await llm.pronounce('Hola', 'Rafael', 'es-MX');
+      const audio = await llm.pronounce(
+        'Hola',
+        'Rafael',
+        'es-MX',
+        'inworld-tts-2'
+      );
       expect(audio).toBe('base64audiodata==');
     });
 
@@ -305,7 +310,7 @@ describe('InworldLLM', () => {
         json: async () => ({ audioContent: 'audio' }),
       } as Response);
 
-      await llm.pronounce('perro', 'Rafael', 'es-MX');
+      await llm.pronounce('perro', 'Rafael', 'es-MX', 'inworld-tts-2');
 
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.inworld.ai/tts/v1/voice',
@@ -327,7 +332,12 @@ describe('InworldLLM', () => {
         status: 500,
       } as Response);
 
-      const audio = await llm.pronounce('Hola', 'Rafael', 'es-MX');
+      const audio = await llm.pronounce(
+        'Hola',
+        'Rafael',
+        'es-MX',
+        'inworld-tts-2'
+      );
       expect(audio).toBeNull();
     });
 
@@ -335,7 +345,12 @@ describe('InworldLLM', () => {
       process.env.INWORLD_API_KEY = '';
       const noKeyLlm = new InworldLLM();
 
-      const audio = await noKeyLlm.pronounce('Hola', 'Rafael', 'es-MX');
+      const audio = await noKeyLlm.pronounce(
+        'Hola',
+        'Rafael',
+        'es-MX',
+        'inworld-tts-2'
+      );
       expect(audio).toBeNull();
     });
   });

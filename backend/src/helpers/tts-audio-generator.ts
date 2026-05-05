@@ -71,7 +71,7 @@ async function generateTTSAudio(
   }
 
   const langConfig = getLanguageConfig(languageCode);
-  const voiceId = langConfig.ttsConfig.speakerId;
+  const { speakerId, modelId } = langConfig.ttsConfig;
 
   const response = await fetch(TTS_URL, {
     method: 'POST',
@@ -81,8 +81,8 @@ async function generateTTSAudio(
     },
     body: JSON.stringify({
       text: text.trim(),
-      voice_id: voiceId,
-      model_id: 'inworld-tts-2',
+      voice_id: speakerId,
+      model_id: modelId,
       language: langConfig.bcp47,
       audio_config: {
         audio_encoding: 'LINEAR16',

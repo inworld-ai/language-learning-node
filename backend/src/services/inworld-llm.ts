@@ -132,7 +132,8 @@ Text: ${text}`;
   async pronounce(
     text: string,
     voiceId: string,
-    bcp47: string
+    bcp47: string,
+    modelId: string
   ): Promise<string | null> {
     if (!this.apiKey) return null;
 
@@ -146,7 +147,7 @@ Text: ${text}`;
         body: JSON.stringify({
           text,
           voice_id: voiceId,
-          model_id: 'inworld-tts-2',
+          model_id: modelId,
           language: bcp47,
           audio_config: {
             audio_encoding: 'LINEAR16',

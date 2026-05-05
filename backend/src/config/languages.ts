@@ -6,8 +6,9 @@
  * Wire-format conventions:
  * - `bcp47` is the canonical form ("es-ES", "fi-FI"). Used for TTS-2 via
  *   `session.providerData.tts.language` (and the REST `/tts/v1/voice` `language` field).
- * - `code` is ISO 639-1 ("es", "fi"). Used as the map key, dropdown value,
- *   and Soniox STT hint via `transcription.language`.
+ * - `code` is ISO 639-1 where available ("es", "fi"), otherwise ISO 639-2
+ *   ("fil"). Used as the map key, dropdown value, and Soniox STT hint via
+ *   `transcription.language`.
  *
  * To add a new language: add a new entry to SUPPORTED_LANGUAGES.
  */
@@ -31,7 +32,7 @@ export interface TTSConfig {
 }
 
 export interface LanguageConfig {
-  /** ISO 639-1 (e.g., 'es', 'ja', 'fr') — map key, dropdown value, Soniox STT hint. */
+  /** ISO 639-1 where available, otherwise ISO 639-2 (e.g. 'fil') — map key, dropdown value, Soniox STT hint. */
   code: string;
   /** BCP-47 with uppercase region (e.g., 'es-ES', 'fi-FI') — TTS-2 language hint. */
   bcp47: string;
@@ -309,7 +310,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Afrikaans',
     nativeName: 'Afrikaans',
     flag: '🇿🇦',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Pieter',
       age: 36,
@@ -317,7 +323,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a South African tutor who loves teaching Afrikaans through Cape Town life, braai culture, and Karoo road trips',
     },
-    exampleTopics: ['Cape Town and Table Mountain', 'braai culture and South African food', 'Afrikaans music and writers'],
+    exampleTopics: [
+      'Cape Town and Table Mountain',
+      'braai culture and South African food',
+      'Afrikaans music and writers',
+    ],
     disfluencies: ['ag', 'um', 'nou ja'],
   },
 
@@ -327,7 +337,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Albanian',
     nativeName: 'Shqip',
     flag: '🇦🇱',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Arta',
       age: 32,
@@ -335,7 +350,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Albanian tutor passionate about Tirana, the Albanian Riviera, and traditional cuisine',
     },
-    exampleTopics: ['Tirana street life', 'the Albanian Riviera and Ksamil', 'traditional dishes like tavë kosi'],
+    exampleTopics: [
+      'Tirana street life',
+      'the Albanian Riviera and Ksamil',
+      'traditional dishes like tavë kosi',
+    ],
     disfluencies: ['ëëë', 'pra', 'domethënë'],
   },
 
@@ -345,7 +364,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Arabic',
     nativeName: 'العربية',
     flag: '🇸🇦',
-    ttsConfig: { speakerId: 'Nour', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Nour',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Layla',
       age: 33,
@@ -353,7 +377,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Saudi tutor who loves teaching Arabic through Middle Eastern history, classical poetry, and modern culture',
     },
-    exampleTopics: ['Arabic poetry and proverbs', 'food across the Levant and Gulf', 'travel to Petra, Cairo, and Riyadh'],
+    exampleTopics: [
+      'Arabic poetry and proverbs',
+      'food across the Levant and Gulf',
+      'travel to Petra, Cairo, and Riyadh',
+    ],
     disfluencies: ['يعني', 'هه', 'يا عني'],
   },
 
@@ -363,7 +391,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Azerbaijani',
     nativeName: 'Azərbaycanca',
     flag: '🇦🇿',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Elmira',
       age: 34,
@@ -371,7 +404,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Azerbaijani tutor who loves Baku, the Caspian coast, and Caucasus cuisine',
     },
-    exampleTopics: ['Baku old city and modern skyline', 'plov and traditional Azerbaijani food', 'mugham music'],
+    exampleTopics: [
+      'Baku old city and modern skyline',
+      'plov and traditional Azerbaijani food',
+      'mugham music',
+    ],
     disfluencies: ['yəni', 'ee', 'belə'],
   },
 
@@ -380,8 +417,13 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     bcp47: 'eu-ES',
     name: 'Basque',
     nativeName: 'Euskara',
-    flag: '🏴',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    flag: '🟥',
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Iker',
       age: 35,
@@ -389,7 +431,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Basque tutor who loves teaching Euskara through San Sebastián pintxos and Bilbao culture',
     },
-    exampleTopics: ['pintxo bars in Donostia', 'the Guggenheim and Bilbao', 'Basque mythology and rural life'],
+    exampleTopics: [
+      'pintxo bars in Donostia',
+      'the Guggenheim and Bilbao',
+      'Basque mythology and rural life',
+    ],
     disfluencies: ['eee', 'beno', 'ba'],
   },
 
@@ -399,7 +445,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Belarusian',
     nativeName: 'Беларуская',
     flag: '🇧🇾',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Hanna',
       age: 31,
@@ -407,7 +458,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Belarusian tutor passionate about Minsk, traditional folk songs, and Belarusian literature',
     },
-    exampleTopics: ['Minsk and Belarusian cities', 'draniki and traditional cuisine', 'Belarusian folk music'],
+    exampleTopics: [
+      'Minsk and Belarusian cities',
+      'draniki and traditional cuisine',
+      'Belarusian folk music',
+    ],
     disfluencies: ['ну', 'эээ', 'значыць'],
   },
 
@@ -417,7 +472,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Bengali',
     nativeName: 'বাংলা',
     flag: '🇧🇩',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Anika',
       age: 30,
@@ -425,7 +485,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Bangladeshi tutor who loves teaching Bengali through Dhaka life, Tagore poetry, and the Sundarbans',
     },
-    exampleTopics: ['Dhaka street food', 'Tagore and Bengali literature', 'Sundarbans and rural Bengal'],
+    exampleTopics: [
+      'Dhaka street food',
+      'Tagore and Bengali literature',
+      'Sundarbans and rural Bengal',
+    ],
     disfluencies: ['মানে', 'ইয়ে', 'আচ্ছা'],
   },
 
@@ -435,7 +499,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Bosnian',
     nativeName: 'Bosanski',
     flag: '🇧🇦',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Edin',
       age: 37,
@@ -443,7 +512,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Bosnian tutor passionate about Sarajevo, ćevapi, and Balkan history',
     },
-    exampleTopics: ['Sarajevo old town', 'ćevapi and Bosnian cuisine', 'Mostar and the Stari Most bridge'],
+    exampleTopics: [
+      'Sarajevo old town',
+      'ćevapi and Bosnian cuisine',
+      'Mostar and the Stari Most bridge',
+    ],
     disfluencies: ['ovaj', 'ono', 'znaš'],
   },
 
@@ -453,7 +526,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Bulgarian',
     nativeName: 'Български',
     flag: '🇧🇬',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Boyana',
       age: 33,
@@ -461,7 +539,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Bulgarian tutor who loves Sofia, Rila monasteries, and Black Sea summers',
     },
-    exampleTopics: ['Sofia and the Vitosha mountains', 'banitsa and shopska salad', 'Bulgarian folk music and dance'],
+    exampleTopics: [
+      'Sofia and the Vitosha mountains',
+      'banitsa and shopska salad',
+      'Bulgarian folk music and dance',
+    ],
     disfluencies: ['ами', 'значи', 'нали'],
   },
 
@@ -470,8 +552,13 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     bcp47: 'ca-ES',
     name: 'Catalan',
     nativeName: 'Català',
-    flag: '🏴',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    flag: '🟨',
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Jordi',
       age: 36,
@@ -479,7 +566,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Catalan tutor who loves Barcelona, Gaudí, and Mediterranean coastal life',
     },
-    exampleTopics: ['Barcelona neighborhoods', 'castellers and Catalan traditions', 'pa amb tomàquet and Catalan food'],
+    exampleTopics: [
+      'Barcelona neighborhoods',
+      'castellers and Catalan traditions',
+      'pa amb tomàquet and Catalan food',
+    ],
     disfluencies: ['eh', 'doncs', 'o sigui'],
   },
 
@@ -489,7 +580,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Chinese',
     nativeName: '中文',
     flag: '🇨🇳',
-    ttsConfig: { speakerId: 'Mei', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Mei',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Mei',
       age: 32,
@@ -497,8 +593,21 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Beijing tutor who loves teaching Mandarin through tea culture, classical poetry, and modern Chinese cinema',
     },
-    exampleTopics: ['Beijing hutongs and street food', 'Chinese tea culture', 'classical poetry and modern films'],
-    disfluencies: ['那个', '就是', '嗯', '就', '其实', '你知道', '对', '怎么说呢'],
+    exampleTopics: [
+      'Beijing hutongs and street food',
+      'Chinese tea culture',
+      'classical poetry and modern films',
+    ],
+    disfluencies: [
+      '那个',
+      '就是',
+      '嗯',
+      '就',
+      '其实',
+      '你知道',
+      '对',
+      '怎么说呢',
+    ],
   },
 
   hr: {
@@ -507,7 +616,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Croatian',
     nativeName: 'Hrvatski',
     flag: '🇭🇷',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Ivana',
       age: 34,
@@ -515,7 +629,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Croatian tutor passionate about Dubrovnik, Dalmatian islands, and Adriatic seafood',
     },
-    exampleTopics: ['Dalmatian coast and islands', 'Plitvice Lakes', 'peka and Croatian seafood'],
+    exampleTopics: [
+      'Dalmatian coast and islands',
+      'Plitvice Lakes',
+      'peka and Croatian seafood',
+    ],
     disfluencies: ['ovaj', 'znaš', 'pa'],
   },
 
@@ -525,7 +643,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Czech',
     nativeName: 'Čeština',
     flag: '🇨🇿',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Pavel',
       age: 38,
@@ -533,7 +656,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Czech tutor who loves teaching through Prague history, Bohemian beer halls, and Czech literature',
     },
-    exampleTopics: ['Prague castle and the old town', 'Czech pivo and beer culture', 'Kafka and Czech cinema'],
+    exampleTopics: [
+      'Prague castle and the old town',
+      'Czech pivo and beer culture',
+      'Kafka and Czech cinema',
+    ],
     disfluencies: ['no', 'jakoby', 'prostě'],
   },
 
@@ -543,7 +670,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Danish',
     nativeName: 'Dansk',
     flag: '🇩🇰',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Mette',
       age: 33,
@@ -551,7 +683,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Danish tutor passionate about Copenhagen, hygge, and Nordic design',
     },
-    exampleTopics: ['Copenhagen and Nyhavn', 'hygge and Scandinavian design', 'smørrebrød and new Nordic cuisine'],
+    exampleTopics: [
+      'Copenhagen and Nyhavn',
+      'hygge and Scandinavian design',
+      'smørrebrød and new Nordic cuisine',
+    ],
     disfluencies: ['øh', 'altså', 'jo'],
   },
 
@@ -561,7 +697,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Dutch',
     nativeName: 'Nederlands',
     flag: '🇳🇱',
-    ttsConfig: { speakerId: 'Katrien', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Katrien',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Sanne',
       age: 31,
@@ -569,7 +710,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Dutch tutor who loves teaching through Amsterdam canals, cycling culture, and Dutch design',
     },
-    exampleTopics: ['Amsterdam canals and museums', 'cycling and Dutch daily life', 'stroopwafels and bitterballen'],
+    exampleTopics: [
+      'Amsterdam canals and museums',
+      'cycling and Dutch daily life',
+      'stroopwafels and bitterballen',
+    ],
     disfluencies: ['eh', 'nou', 'weet je'],
   },
 
@@ -579,7 +724,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Estonian',
     nativeName: 'Eesti',
     flag: '🇪🇪',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Kaarel',
       age: 34,
@@ -587,17 +737,26 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Estonian tutor passionate about Tallinn old town, e-Estonia, and Baltic forests',
     },
-    exampleTopics: ['Tallinn medieval old town', 'Estonian saunas and forest culture', 'e-Estonia and digital society'],
+    exampleTopics: [
+      'Tallinn medieval old town',
+      'Estonian saunas and forest culture',
+      'e-Estonia and digital society',
+    ],
     disfluencies: ['noh', 'eee', 'tähendab'],
   },
 
-  tl: {
-    code: 'tl',
+  fil: {
+    code: 'fil',
     bcp47: 'fil-PH',
     name: 'Filipino',
     nativeName: 'Filipino',
     flag: '🇵🇭',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Liza',
       age: 30,
@@ -605,7 +764,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Filipino tutor who loves teaching Tagalog through Manila life, island hopping, and family traditions',
     },
-    exampleTopics: ['Manila and Cebu', 'adobo and lechon', 'Philippine islands and beaches'],
+    exampleTopics: [
+      'Manila and Cebu',
+      'adobo and lechon',
+      'Philippine islands and beaches',
+    ],
     disfluencies: ['ano', 'kasi', 'parang'],
   },
 
@@ -615,7 +778,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Finnish',
     nativeName: 'Suomi',
     flag: '🇫🇮',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Aino',
       age: 33,
@@ -623,7 +791,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Finnish tutor who loves teaching Finnish through Helsinki life and Nordic culture',
     },
-    exampleTopics: ['sauna culture', 'Finnish design and architecture', 'life in Helsinki and Lapland'],
+    exampleTopics: [
+      'sauna culture',
+      'Finnish design and architecture',
+      'life in Helsinki and Lapland',
+    ],
     disfluencies: ['öö', 'niinku', 'tota'],
   },
 
@@ -632,8 +804,13 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     bcp47: 'gl-ES',
     name: 'Galician',
     nativeName: 'Galego',
-    flag: '🏴',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    flag: '🟦',
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Brais',
       age: 36,
@@ -641,7 +818,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Galician tutor passionate about Santiago de Compostela, Atlantic coast, and Galician seafood',
     },
-    exampleTopics: ['Camino de Santiago', 'pulpo a la gallega and seafood', 'Galician folk music'],
+    exampleTopics: [
+      'Camino de Santiago',
+      'pulpo a la gallega and seafood',
+      'Galician folk music',
+    ],
     disfluencies: ['eh', 'pois', 'ou sexa'],
   },
 
@@ -651,7 +832,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Greek',
     nativeName: 'Ελληνικά',
     flag: '🇬🇷',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Eleni',
       age: 35,
@@ -659,7 +845,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Greek tutor who loves teaching through Athens history, the Aegean islands, and Greek philosophy',
     },
-    exampleTopics: ['Athens and the Acropolis', 'Greek islands like Santorini and Crete', 'Greek philosophy and mythology'],
+    exampleTopics: [
+      'Athens and the Acropolis',
+      'Greek islands like Santorini and Crete',
+      'Greek philosophy and mythology',
+    ],
     disfluencies: ['ε', 'δηλαδή', 'ξέρεις'],
   },
 
@@ -669,7 +859,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Gujarati',
     nativeName: 'ગુજરાતી',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Priya',
       age: 32,
@@ -677,7 +872,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Gujarati tutor passionate about Ahmedabad, vegetarian cuisine, and Garba dance',
     },
-    exampleTopics: ['Ahmedabad and Gujarati culture', 'dhokla, thepla and vegetarian thalis', 'Navratri and Garba'],
+    exampleTopics: [
+      'Ahmedabad and Gujarati culture',
+      'dhokla, thepla and vegetarian thalis',
+      'Navratri and Garba',
+    ],
     disfluencies: ['એમ', 'મતલબ', 'જેમ કે'],
   },
 
@@ -687,7 +886,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Hebrew',
     nativeName: 'עברית',
     flag: '🇮🇱',
-    ttsConfig: { speakerId: 'Yael', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Yael',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Noa',
       age: 31,
@@ -695,7 +899,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Israeli tutor who loves teaching Hebrew through Tel Aviv beach life, Jerusalem history, and modern Israeli culture',
     },
-    exampleTopics: ['Tel Aviv and Jaffa', 'Jerusalem and the Old City', 'shakshuka and Israeli cuisine'],
+    exampleTopics: [
+      'Tel Aviv and Jaffa',
+      'Jerusalem and the Old City',
+      'shakshuka and Israeli cuisine',
+    ],
     disfluencies: ['אהה', 'יעני', 'כאילו'],
   },
 
@@ -705,7 +913,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Hindi',
     nativeName: 'हिन्दी',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Aarav', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Aarav',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Aarav',
       age: 34,
@@ -713,7 +926,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Indian tutor who loves teaching Hindi through Bollywood, street food, and travel across India',
     },
-    exampleTopics: ['Delhi and Mumbai life', 'Bollywood films and music', 'Indian street food and chai'],
+    exampleTopics: [
+      'Delhi and Mumbai life',
+      'Bollywood films and music',
+      'Indian street food and chai',
+    ],
     disfluencies: ['मतलब', 'अरे', 'यानी'],
   },
 
@@ -723,7 +940,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Hungarian',
     nativeName: 'Magyar',
     flag: '🇭🇺',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Zsófia',
       age: 33,
@@ -731,7 +953,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Hungarian tutor passionate about Budapest, thermal baths, and Magyar literature',
     },
-    exampleTopics: ['Budapest and the Danube', 'gulyás and Hungarian cuisine', 'thermal baths and ruin pubs'],
+    exampleTopics: [
+      'Budapest and the Danube',
+      'gulyás and Hungarian cuisine',
+      'thermal baths and ruin pubs',
+    ],
     disfluencies: ['hát', 'izé', 'ugye'],
   },
 
@@ -739,9 +965,14 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     code: 'id',
     bcp47: 'id-ID',
     name: 'Indonesian',
-    nativeName: 'Indonesia',
+    nativeName: 'Bahasa Indonesia',
     flag: '🇮🇩',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Budi',
       age: 35,
@@ -749,7 +980,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Indonesian tutor who loves teaching through Bali, Javanese culture, and the diverse archipelago',
     },
-    exampleTopics: ['Bali and Java', 'nasi goreng and Indonesian street food', 'island hopping across Indonesia'],
+    exampleTopics: [
+      'Bali and Java',
+      'nasi goreng and Indonesian street food',
+      'island hopping across Indonesia',
+    ],
     disfluencies: ['anu', 'gitu', 'ya'],
   },
 
@@ -759,7 +994,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Japanese',
     nativeName: '日本語',
     flag: '🇯🇵',
-    ttsConfig: { speakerId: 'Hina', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Hina',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Yuki',
       age: 32,
@@ -767,8 +1007,21 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Japanese tutor who loves teaching through Tokyo neighborhoods, tea ceremony, and modern pop culture',
     },
-    exampleTopics: ['Tokyo neighborhoods and Kyoto temples', 'sushi, ramen, and izakaya culture', 'anime, manga, and J-pop'],
-    disfluencies: ['えーと', 'あの', 'そうですね', 'うーん', 'まあ', 'なんか', 'ええ', 'まあね'],
+    exampleTopics: [
+      'Tokyo neighborhoods and Kyoto temples',
+      'sushi, ramen, and izakaya culture',
+      'anime, manga, and J-pop',
+    ],
+    disfluencies: [
+      'えーと',
+      'あの',
+      'そうですね',
+      'うーん',
+      'まあ',
+      'なんか',
+      'ええ',
+      'まあね',
+    ],
   },
 
   kn: {
@@ -777,7 +1030,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Kannada',
     nativeName: 'ಕನ್ನಡ',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Kavya',
       age: 30,
@@ -785,7 +1043,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Karnataka tutor passionate about Bengaluru, Mysuru palaces, and South Indian cuisine',
     },
-    exampleTopics: ['Bengaluru tech and café culture', 'Mysuru palace and Hampi ruins', 'masala dosa and South Indian food'],
+    exampleTopics: [
+      'Bengaluru tech and café culture',
+      'Mysuru palace and Hampi ruins',
+      'masala dosa and South Indian food',
+    ],
     disfluencies: ['ಅಂದ್ರೆ', 'ಅಯ್ಯೋ', 'ಹಾ'],
   },
 
@@ -795,7 +1057,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Kazakh',
     nativeName: 'Қазақ',
     flag: '🇰🇿',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Aigerim',
       age: 32,
@@ -803,7 +1070,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Kazakh tutor who loves teaching through Almaty, the steppes, and Central Asian traditions',
     },
-    exampleTopics: ['Almaty and Astana', 'beshbarmak and steppe cuisine', 'eagle hunting and Kazakh traditions'],
+    exampleTopics: [
+      'Almaty and Astana',
+      'beshbarmak and steppe cuisine',
+      'eagle hunting and Kazakh traditions',
+    ],
     disfluencies: ['яғни', 'ееее', 'былай'],
   },
 
@@ -813,7 +1084,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Korean',
     nativeName: '한국어',
     flag: '🇰🇷',
-    ttsConfig: { speakerId: 'Hyunwoo', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Hyunwoo',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Min-jun',
       age: 31,
@@ -821,8 +1097,21 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Korean tutor who loves teaching through Seoul life, K-pop, and Korean food culture',
     },
-    exampleTopics: ['Seoul neighborhoods and Jeju island', 'K-pop, K-dramas, and Korean cinema', 'kimchi, bibimbap, and Korean BBQ'],
-    disfluencies: ['그…', '음…', '저기', '뭐', '있잖아', '그러니까', '아', '말하자면'],
+    exampleTopics: [
+      'Seoul neighborhoods and Jeju island',
+      'K-pop, K-dramas, and Korean cinema',
+      'kimchi, bibimbap, and Korean BBQ',
+    ],
+    disfluencies: [
+      '그…',
+      '음…',
+      '저기',
+      '뭐',
+      '있잖아',
+      '그러니까',
+      '아',
+      '말하자면',
+    ],
   },
 
   lv: {
@@ -831,7 +1120,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Latvian',
     nativeName: 'Latviešu',
     flag: '🇱🇻',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Liene',
       age: 33,
@@ -839,7 +1133,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Latvian tutor passionate about Riga art nouveau, Baltic forests, and folk traditions',
     },
-    exampleTopics: ['Riga old town and art nouveau', 'Latvian folk songs (dainas)', 'midsummer Jāņi celebrations'],
+    exampleTopics: [
+      'Riga old town and art nouveau',
+      'Latvian folk songs (dainas)',
+      'midsummer Jāņi celebrations',
+    ],
     disfluencies: ['nu', 'tātad', 'redzi'],
   },
 
@@ -849,7 +1147,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Lithuanian',
     nativeName: 'Lietuvių',
     flag: '🇱🇹',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Tomas',
       age: 35,
@@ -857,7 +1160,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Lithuanian tutor who loves Vilnius old town, Curonian Spit dunes, and Baltic history',
     },
-    exampleTopics: ['Vilnius and Trakai castle', 'cepelinai and Lithuanian cuisine', 'Curonian Spit and the Baltic coast'],
+    exampleTopics: [
+      'Vilnius and Trakai castle',
+      'cepelinai and Lithuanian cuisine',
+      'Curonian Spit and the Baltic coast',
+    ],
     disfluencies: ['na', 'tai', 'žinai'],
   },
 
@@ -867,7 +1174,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Macedonian',
     nativeName: 'Македонски',
     flag: '🇲🇰',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Nikola',
       age: 36,
@@ -875,7 +1187,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Macedonian tutor passionate about Skopje, Lake Ohrid, and Balkan history',
     },
-    exampleTopics: ['Skopje and Lake Ohrid', 'tavče gravče and Macedonian cuisine', 'Balkan folk music'],
+    exampleTopics: [
+      'Skopje and Lake Ohrid',
+      'tavče gravče and Macedonian cuisine',
+      'Balkan folk music',
+    ],
     disfluencies: ['па', 'значи', 'знаеш'],
   },
 
@@ -885,7 +1201,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Malay',
     nativeName: 'Melayu',
     flag: '🇲🇾',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Aisyah',
       age: 32,
@@ -893,7 +1214,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Malaysian tutor who loves teaching through KL street food, Penang heritage, and Borneo nature',
     },
-    exampleTopics: ['Kuala Lumpur and Penang', 'nasi lemak and Malaysian street food', 'Borneo rainforests'],
+    exampleTopics: [
+      'Kuala Lumpur and Penang',
+      'nasi lemak and Malaysian street food',
+      'Borneo rainforests',
+    ],
     disfluencies: ['hmm', 'macam', 'tu'],
   },
 
@@ -903,7 +1228,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Malayalam',
     nativeName: 'മലയാളം',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Anjali',
       age: 31,
@@ -911,7 +1241,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Kerala tutor passionate about backwater houseboats, Kathakali, and Keralan cuisine',
     },
-    exampleTopics: ['Kerala backwaters and Kochi', 'sadya and coconut-based cooking', 'Kathakali and traditional arts'],
+    exampleTopics: [
+      'Kerala backwaters and Kochi',
+      'sadya and coconut-based cooking',
+      'Kathakali and traditional arts',
+    ],
     disfluencies: ['അതേ', 'പിന്നെ', 'അല്ലെ'],
   },
 
@@ -921,7 +1255,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Marathi',
     nativeName: 'मराठी',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Rohan',
       age: 33,
@@ -929,7 +1268,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Maharashtrian tutor who loves teaching through Mumbai life, Pune culture, and Marathi cinema',
     },
-    exampleTopics: ['Mumbai and the Western Ghats', 'vada pav and Maharashtrian street food', 'Marathi theatre and cinema'],
+    exampleTopics: [
+      'Mumbai and the Western Ghats',
+      'vada pav and Maharashtrian street food',
+      'Marathi theatre and cinema',
+    ],
     disfluencies: ['म्हणजे', 'अरे', 'तर'],
   },
 
@@ -939,7 +1282,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Norwegian',
     nativeName: 'Norsk',
     flag: '🇳🇴',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Sigrid',
       age: 32,
@@ -947,7 +1295,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Norwegian tutor passionate about Oslo, fjord hikes, and Nordic outdoor life',
     },
-    exampleTopics: ['Oslo and the Norwegian fjords', 'friluftsliv and outdoor culture', 'brunost and Norwegian cuisine'],
+    exampleTopics: [
+      'Oslo and the Norwegian fjords',
+      'friluftsliv and outdoor culture',
+      'brunost and Norwegian cuisine',
+    ],
     disfluencies: ['eh', 'liksom', 'altså'],
   },
 
@@ -957,7 +1309,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Persian',
     nativeName: 'فارسی',
     flag: '🇮🇷',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Darius',
       age: 36,
@@ -965,7 +1322,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'an Iranian tutor who loves teaching Persian through Tehran life, classical poetry, and Iranian cuisine',
     },
-    exampleTopics: ['Tehran and Isfahan', 'Hafez, Rumi and Persian poetry', 'kebabs, stews, and Persian rice dishes'],
+    exampleTopics: [
+      'Tehran and Isfahan',
+      'Hafez, Rumi and Persian poetry',
+      'kebabs, stews, and Persian rice dishes',
+    ],
     disfluencies: ['یعنی', 'خب', 'چیز'],
   },
 
@@ -975,7 +1336,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Polish',
     nativeName: 'Polski',
     flag: '🇵🇱',
-    ttsConfig: { speakerId: 'Szymon', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Szymon',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Szymon',
       age: 33,
@@ -983,7 +1349,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Polish tutor passionate about Kraków old town, Polish cinema, and pierogi traditions',
     },
-    exampleTopics: ['Kraków and Warsaw', 'pierogi and Polish home cooking', 'Polish cinema and history'],
+    exampleTopics: [
+      'Kraków and Warsaw',
+      'pierogi and Polish home cooking',
+      'Polish cinema and history',
+    ],
     disfluencies: ['no', 'yyy', 'wiesz'],
   },
 
@@ -993,7 +1363,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Punjabi',
     nativeName: 'ਪੰਜਾਬੀ',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Harpreet',
       age: 34,
@@ -1001,7 +1376,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Punjabi tutor who loves teaching through Amritsar, bhangra, and Punjabi food culture',
     },
-    exampleTopics: ['Amritsar and the Golden Temple', 'butter chicken, sarson da saag, and Punjabi food', 'bhangra and Punjabi music'],
+    exampleTopics: [
+      'Amritsar and the Golden Temple',
+      'butter chicken, sarson da saag, and Punjabi food',
+      'bhangra and Punjabi music',
+    ],
     disfluencies: ['ਮਤਲਬ', 'ਯਾਨੀ', 'ਉਹ'],
   },
 
@@ -1011,7 +1390,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Romanian',
     nativeName: 'Română',
     flag: '🇷🇴',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Andrei',
       age: 35,
@@ -1019,7 +1403,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Romanian tutor passionate about Bucharest, Transylvanian castles, and Carpathian villages',
     },
-    exampleTopics: ['Bucharest and Transylvania', 'sarmale and Romanian home cooking', 'Carpathian mountains and folklore'],
+    exampleTopics: [
+      'Bucharest and Transylvania',
+      'sarmale and Romanian home cooking',
+      'Carpathian mountains and folklore',
+    ],
     disfluencies: ['adică', 'păi', 'deci'],
   },
 
@@ -1029,7 +1417,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Russian',
     nativeName: 'Русский',
     flag: '🇷🇺',
-    ttsConfig: { speakerId: 'Elena', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Elena',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Anastasia',
       age: 34,
@@ -1037,7 +1430,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Russian tutor who loves teaching through Moscow life, classical literature, and Russian cuisine',
     },
-    exampleTopics: ['Moscow and St. Petersburg', 'Tolstoy, Dostoevsky and Russian literature', 'borscht, pelmeni and Russian food'],
+    exampleTopics: [
+      'Moscow and St. Petersburg',
+      'Tolstoy, Dostoevsky and Russian literature',
+      'borscht, pelmeni and Russian food',
+    ],
     disfluencies: ['ну', 'это', 'как бы'],
   },
 
@@ -1047,7 +1444,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Serbian',
     nativeName: 'Српски',
     flag: '🇷🇸',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Miloš',
       age: 36,
@@ -1055,7 +1457,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Serbian tutor passionate about Belgrade nightlife, Balkan music, and Serbian traditions',
     },
-    exampleTopics: ['Belgrade nightlife and Novi Sad', 'ćevapi, ajvar and Serbian food', 'Exit Festival and Balkan music'],
+    exampleTopics: [
+      'Belgrade nightlife and Novi Sad',
+      'ćevapi, ajvar and Serbian food',
+      'Exit Festival and Balkan music',
+    ],
     disfluencies: ['ovaj', 'znaš', 'pa'],
   },
 
@@ -1065,7 +1471,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Slovak',
     nativeName: 'Slovenčina',
     flag: '🇸🇰',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Zuzana',
       age: 32,
@@ -1073,7 +1484,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Slovak tutor who loves Bratislava, the Tatra mountains, and Slovak folk traditions',
     },
-    exampleTopics: ['Bratislava and the High Tatras', 'bryndzové halušky and Slovak cuisine', 'wooden churches and folk music'],
+    exampleTopics: [
+      'Bratislava and the High Tatras',
+      'bryndzové halušky and Slovak cuisine',
+      'wooden churches and folk music',
+    ],
     disfluencies: ['no', 'akože', 'proste'],
   },
 
@@ -1083,7 +1498,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Slovenian',
     nativeName: 'Slovenščina',
     flag: '🇸🇮',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Maja',
       age: 31,
@@ -1091,7 +1511,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Slovenian tutor passionate about Ljubljana, Lake Bled, and Julian Alps hiking',
     },
-    exampleTopics: ['Ljubljana and Lake Bled', 'potica and Slovenian cuisine', 'Julian Alps and Postojna caves'],
+    exampleTopics: [
+      'Ljubljana and Lake Bled',
+      'potica and Slovenian cuisine',
+      'Julian Alps and Postojna caves',
+    ],
     disfluencies: ['no', 'pač', 'a veš'],
   },
 
@@ -1101,7 +1525,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Swahili',
     nativeName: 'Kiswahili',
     flag: '🇰🇪',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Amani',
       age: 33,
@@ -1109,7 +1538,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Kenyan tutor who loves teaching Swahili through Nairobi life, coastal Lamu, and East African culture',
     },
-    exampleTopics: ['Nairobi and the Maasai Mara', 'ugali, nyama choma and East African food', 'Swahili coastal culture and Lamu'],
+    exampleTopics: [
+      'Nairobi and the Maasai Mara',
+      'ugali, nyama choma and East African food',
+      'Swahili coastal culture and Lamu',
+    ],
     disfluencies: ['eee', 'yaani', 'basi'],
   },
 
@@ -1119,7 +1552,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Swedish',
     nativeName: 'Svenska',
     flag: '🇸🇪',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Erik',
       age: 35,
@@ -1127,7 +1565,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Swedish tutor passionate about Stockholm, fika culture, and the Swedish countryside',
     },
-    exampleTopics: ['Stockholm archipelago', 'fika and Swedish coffee culture', 'midsummer and Swedish traditions'],
+    exampleTopics: [
+      'Stockholm archipelago',
+      'fika and Swedish coffee culture',
+      'midsummer and Swedish traditions',
+    ],
     disfluencies: ['öh', 'liksom', 'alltså'],
   },
 
@@ -1137,7 +1579,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Tamil',
     nativeName: 'தமிழ்',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Karthik',
       age: 34,
@@ -1145,7 +1592,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Tamil tutor who loves teaching through Chennai life, Tamil cinema, and South Indian temples',
     },
-    exampleTopics: ['Chennai and Madurai temples', 'idli, dosa and Tamil cuisine', 'Tamil cinema and Carnatic music'],
+    exampleTopics: [
+      'Chennai and Madurai temples',
+      'idli, dosa and Tamil cuisine',
+      'Tamil cinema and Carnatic music',
+    ],
     disfluencies: ['அதான்', 'அப்பா', 'என்ன'],
   },
 
@@ -1155,7 +1606,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Telugu',
     nativeName: 'తెలుగు',
     flag: '🇮🇳',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Lakshmi',
       age: 32,
@@ -1163,7 +1619,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Telugu tutor passionate about Hyderabad, biryani, and Tollywood cinema',
     },
-    exampleTopics: ['Hyderabad and the Charminar', 'Hyderabadi biryani and Andhra cuisine', 'Tollywood films and Telugu poetry'],
+    exampleTopics: [
+      'Hyderabad and the Charminar',
+      'Hyderabadi biryani and Andhra cuisine',
+      'Tollywood films and Telugu poetry',
+    ],
     disfluencies: ['అంటే', 'అదే', 'అరె'],
   },
 
@@ -1173,7 +1633,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Thai',
     nativeName: 'ไทย',
     flag: '🇹🇭',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Siriporn',
       age: 31,
@@ -1181,7 +1646,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Thai tutor who loves teaching through Bangkok markets, island life, and Thai food culture',
     },
-    exampleTopics: ['Bangkok and Chiang Mai', 'pad thai, tom yum and Thai street food', 'Thai islands and beaches'],
+    exampleTopics: [
+      'Bangkok and Chiang Mai',
+      'pad thai, tom yum and Thai street food',
+      'Thai islands and beaches',
+    ],
     disfluencies: ['เอ่อ', 'แบบ', 'คือ'],
   },
 
@@ -1191,7 +1660,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Turkish',
     nativeName: 'Türkçe',
     flag: '🇹🇷',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Emre',
       age: 35,
@@ -1199,7 +1673,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Turkish tutor passionate about Istanbul, Anatolian history, and Turkish cuisine',
     },
-    exampleTopics: ['Istanbul and the Bosphorus', 'kebabs, mezes and Turkish breakfasts', 'Cappadocia and Turkish coast'],
+    exampleTopics: [
+      'Istanbul and the Bosphorus',
+      'kebabs, mezes and Turkish breakfasts',
+      'Cappadocia and Turkish coast',
+    ],
     disfluencies: ['şey', 'yani', 'işte'],
   },
 
@@ -1209,7 +1687,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Ukrainian',
     nativeName: 'Українська',
     flag: '🇺🇦',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Olena',
       age: 33,
@@ -1217,7 +1700,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Ukrainian tutor who loves teaching through Kyiv, Lviv coffee houses, and Ukrainian folk traditions',
     },
-    exampleTopics: ['Kyiv and Lviv', 'borscht, varenyky and Ukrainian cuisine', 'Ukrainian folk songs and embroidery'],
+    exampleTopics: [
+      'Kyiv and Lviv',
+      'borscht, varenyky and Ukrainian cuisine',
+      'Ukrainian folk songs and embroidery',
+    ],
     disfluencies: ['ну', 'це', 'тобто'],
   },
 
@@ -1227,7 +1714,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Urdu',
     nativeName: 'اردو',
     flag: '🇵🇰',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Zara',
       age: 32,
@@ -1235,7 +1727,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Pakistani tutor passionate about Lahore, Urdu poetry (ghazals), and Mughlai cuisine',
     },
-    exampleTopics: ['Lahore and Karachi', 'Urdu ghazals and shayari', 'biryani, nihari and Mughlai food'],
+    exampleTopics: [
+      'Lahore and Karachi',
+      'Urdu ghazals and shayari',
+      'biryani, nihari and Mughlai food',
+    ],
     disfluencies: ['یعنی', 'مطلب', 'وہ'],
   },
 
@@ -1245,7 +1741,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Vietnamese',
     nativeName: 'Tiếng Việt',
     flag: '🇻🇳',
-    ttsConfig: { speakerId: 'Sarah', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Sarah',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Linh',
       age: 30,
@@ -1253,7 +1754,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Vietnamese tutor who loves teaching through Hanoi street food, Hạ Long Bay, and Vietnamese coffee culture',
     },
-    exampleTopics: ['Hanoi and Ho Chi Minh City', 'phở, bánh mì and Vietnamese street food', 'Hạ Long Bay and the Mekong Delta'],
+    exampleTopics: [
+      'Hanoi and Ho Chi Minh City',
+      'phở, bánh mì and Vietnamese street food',
+      'Hạ Long Bay and the Mekong Delta',
+    ],
     disfluencies: ['ờ', 'thì', 'cái'],
   },
 
@@ -1263,7 +1768,12 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
     name: 'Welsh',
     nativeName: 'Cymraeg',
     flag: '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
-    ttsConfig: { speakerId: 'Jason', modelId: 'inworld-tts-2', speakingRate: 1, temperature: 1 },
+    ttsConfig: {
+      speakerId: 'Jason',
+      modelId: 'inworld-tts-2',
+      speakingRate: 1,
+      temperature: 1,
+    },
     teacherPersona: {
       name: 'Rhys',
       age: 36,
@@ -1271,7 +1781,11 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       description:
         'a Welsh tutor passionate about Cardiff, Snowdonia hiking, and Welsh poetry traditions',
     },
-    exampleTopics: ['Cardiff and the Welsh valleys', 'Snowdonia and the coastal path', 'cawl, Welsh cakes and male voice choirs'],
+    exampleTopics: [
+      'Cardiff and the Welsh valleys',
+      'Snowdonia and the coastal path',
+      'cawl, Welsh cakes and male voice choirs',
+    ],
     disfluencies: ['ym', 'wel', "ti'n gwybod"],
   },
 };
