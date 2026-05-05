@@ -82,7 +82,18 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'American idioms and slang',
       'travel across the United States',
     ],
-    disfluencies: ['um', 'uh', 'well', 'you know'],
+    disfluencies: [
+      'um',
+      'uh',
+      'well',
+      'you know',
+      'like',
+      'I mean',
+      'so',
+      'hmm',
+      'kinda',
+      'right',
+    ],
   },
 
   es: {
@@ -111,7 +122,18 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'the concept of brunch across cultures',
       'Balkan travel',
     ],
-    disfluencies: ['este', 'eh', 'pues', 'o sea'],
+    disfluencies: [
+      'este',
+      'eh',
+      'pues',
+      'o sea',
+      'bueno',
+      'a ver',
+      'mira',
+      'vale',
+      'digamos',
+      'es que',
+    ],
   },
 
   fr: {
@@ -141,7 +163,18 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'travel in Provence and the French Riviera',
       'French music from Édith Piaf to modern artists',
     ],
-    disfluencies: ['euh', 'ben', 'bah', 'tu vois'],
+    disfluencies: [
+      'euh',
+      'ben',
+      'bah',
+      'tu vois',
+      'eh bien',
+      'enfin',
+      'quoi',
+      'voilà',
+      'disons',
+      'en fait',
+    ],
   },
 
   de: {
@@ -171,7 +204,18 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'traveling through Bavaria and the Alps',
       'German literature from Goethe to modern authors',
     ],
-    disfluencies: ['ähm', 'also', 'naja', 'sozusagen'],
+    disfluencies: [
+      'ähm',
+      'also',
+      'naja',
+      'sozusagen',
+      'tja',
+      'hmm',
+      'eben',
+      'halt',
+      'irgendwie',
+      'weißt du',
+    ],
   },
 
   it: {
@@ -201,7 +245,18 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'fashion and design in Milan',
       'Italian music from opera to modern pop',
     ],
-    disfluencies: ['ehm', 'cioè', 'allora', 'insomma'],
+    disfluencies: [
+      'ehm',
+      'cioè',
+      'allora',
+      'insomma',
+      'beh',
+      'ecco',
+      'diciamo',
+      'tipo',
+      'magari',
+      'praticamente',
+    ],
   },
 
   pt: {
@@ -231,7 +286,18 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
       'football (soccer) culture',
       'the Amazon and Brazilian nature',
     ],
-    disfluencies: ['é', 'tipo', 'então', 'sabe'],
+    disfluencies: [
+      'é',
+      'tipo',
+      'então',
+      'sabe',
+      'né',
+      'olha',
+      'pois é',
+      'meio que',
+      'tipo assim',
+      'cara',
+    ],
   },
 
   // ── Soniox-supported languages (alphabetical) ────────────────────────
@@ -432,7 +498,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Beijing tutor who loves teaching Mandarin through tea culture, classical poetry, and modern Chinese cinema',
     },
     exampleTopics: ['Beijing hutongs and street food', 'Chinese tea culture', 'classical poetry and modern films'],
-    disfluencies: ['那个', '就是', '嗯'],
+    disfluencies: ['那个', '就是', '嗯', '就', '其实', '你知道', '对', '怎么说呢'],
   },
 
   hr: {
@@ -702,7 +768,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Japanese tutor who loves teaching through Tokyo neighborhoods, tea ceremony, and modern pop culture',
     },
     exampleTopics: ['Tokyo neighborhoods and Kyoto temples', 'sushi, ramen, and izakaya culture', 'anime, manga, and J-pop'],
-    disfluencies: ['えーと', 'あの', 'そうですね'],
+    disfluencies: ['えーと', 'あの', 'そうですね', 'うーん', 'まあ', 'なんか', 'ええ', 'まあね'],
   },
 
   kn: {
@@ -756,7 +822,7 @@ export const SUPPORTED_LANGUAGES: Record<string, LanguageConfig> = {
         'a Korean tutor who loves teaching through Seoul life, K-pop, and Korean food culture',
     },
     exampleTopics: ['Seoul neighborhoods and Jeju island', 'K-pop, K-dramas, and Korean cinema', 'kimchi, bibimbap, and Korean BBQ'],
-    disfluencies: ['그…', '음…', '저기'],
+    disfluencies: ['그…', '음…', '저기', '뭐', '있잖아', '그러니까', '아', '말하자면'],
   },
 
   lv: {
