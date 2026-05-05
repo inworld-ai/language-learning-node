@@ -281,7 +281,7 @@ describe('SessionManager', () => {
   });
 
   describe('streaming STT events', () => {
-    it('should accumulate transcription deltas incrementally', () => {
+    it('should treat transcription deltas as cumulative (Soniox)', () => {
       const clientWs = createMockClientWs();
       const mgr = new SessionManager({
         sessionId: 'test-stt-1',
@@ -298,12 +298,12 @@ describe('SessionManager', () => {
 
       handler.call(mgr, {
         type: 'conversation.item.input_audio_transcription.delta',
-        delta: 'Hola, ',
+        delta: 'Hola',
       });
 
       handler.call(mgr, {
         type: 'conversation.item.input_audio_transcription.delta',
-        delta: 'me llamo Cale.',
+        delta: 'Hola, me llamo Cale.',
       });
 
       const sent = (clientWs as unknown as { _messages: string[] })._messages;
@@ -313,7 +313,7 @@ describe('SessionManager', () => {
           (m: Record<string, unknown>) => m.type === 'partial_transcript'
         );
       expect(partials).toHaveLength(2);
-      expect(partials[0].text).toBe('Hola, ');
+      expect(partials[0].text).toBe('Hola');
       expect(partials[1].text).toBe('Hola, me llamo Cale.');
     });
 
@@ -430,9 +430,10 @@ describe('SessionManager', () => {
       const sent = JSON.parse(mockInworldWs.send.mock.calls[0][0]);
       expect(sent.type).toBe('session.update');
       expect(sent.session.audio.input.transcription.model).toBe(
-        'assemblyai/u3-rt-pro'
+        'soniox/stt-rt-v4'
       );
-      expect(sent.session.audio.input.transcription.language).toBe('es-MX');
+      expect(sent.session.audio.input.transcription.language).toBe('es');
+      expect(sent.session.providerData.tts.language).toBe('es-MX');
       expect(sent.session.model).toBe('openai/gpt-4.1-nano');
     });
   });

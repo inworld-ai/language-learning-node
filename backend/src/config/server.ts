@@ -18,5 +18,5 @@ export const serverConfig = {
     'wss://api.inworld.ai/api/v1/realtime/session',
 
   /** TTS voice model */
-  ttsModel: process.env.TTS_MODEL || 'inworld-tts-1.5-max',
+  ttsModel: process.env.TTS_MODEL || 'inworld-tts-2',
 } as const;

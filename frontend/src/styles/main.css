@@ -178,12 +178,14 @@ body {
     top: calc(100% + 0.5rem);
     left: 0;
     right: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--bg-card);
     border: 1px solid var(--border-warm);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     z-index: 100;
-    overflow: hidden;
 }
 
 .sidebar-close-button {

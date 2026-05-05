@@ -126,7 +126,8 @@ export function setupWebSocketHandlers(wss: WebSocketServer): void {
               const langConfig = getLanguageConfig(languageCode);
               const audio = await llm.pronounce(
                 msg.text,
-                langConfig.ttsConfig.speakerId
+                langConfig.ttsConfig.speakerId,
+                langConfig.bcp47
               );
               if (audio) {
                 wsSend(ws, {

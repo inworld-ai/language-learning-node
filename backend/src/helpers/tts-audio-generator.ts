@@ -82,7 +82,8 @@ async function generateTTSAudio(
     body: JSON.stringify({
       text: text.trim(),
       voice_id: voiceId,
-      model_id: 'inworld-tts-1.5-max',
+      model_id: 'inworld-tts-2',
+      language: langConfig.bcp47,
       audio_config: {
         audio_encoding: 'LINEAR16',
         sample_rate_hertz: 24000,

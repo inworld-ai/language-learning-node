@@ -129,7 +129,11 @@ Text: ${text}`;
    * Pronounce text using Inworld TTS API.
    * Returns base64-encoded LINEAR16 audio at 24kHz, or null on failure.
    */
-  async pronounce(text: string, voiceId: string): Promise<string | null> {
+  async pronounce(
+    text: string,
+    voiceId: string,
+    bcp47: string
+  ): Promise<string | null> {
     if (!this.apiKey) return null;
 
     try {
@@ -142,7 +146,8 @@ Text: ${text}`;
         body: JSON.stringify({
           text,
           voice_id: voiceId,
-          model_id: 'inworld-tts-1.5-max',
+          model_id: 'inworld-tts-2',
+          language: bcp47,
           audio_config: {
             audio_encoding: 'LINEAR16',
             sample_rate_hertz: 24000,

@@ -236,10 +236,11 @@ export class SessionManager {
         break;
 
       case 'conversation.item.input_audio_transcription.delta': {
-        // Deltas are INCREMENTAL — accumulate into buffer (matches Inworld playground)
+        // Soniox emits CUMULATIVE deltas — each delta is the full transcript
+        // so far, not just new tokens. Replace the buffer rather than appending.
         const partialDelta = event.delta as string;
         if (partialDelta) {
-          this.userTextBuffer += partialDelta;
+          this.userTextBuffer = partialDelta;
           this.wsSend({
             type: 'partial_transcript',
             text: this.userTextBuffer,
@@ -348,7 +349,7 @@ export class SessionManager {
   }
 
   private sendSessionUpdate(): void {
-    const { teacherPersona, name, exampleTopics, ttsConfig, sttLanguageCode } =
+    const { teacherPersona, name, exampleTopics, ttsConfig, code, bcp47 } =
       this.langConfig;
     const memoryContext = this.memory.getContext();
 
@@ -381,8 +382,8 @@ export class SessionManager {
         audio: {
           input: {
             transcription: {
-              model: 'assemblyai/u3-rt-pro',
-              language: sttLanguageCode,
+              model: 'soniox/stt-rt-v4',
+              language: code,
             },
             turn_detection: {
               type: 'semantic_vad',
@@ -396,6 +397,9 @@ export class SessionManager {
             model: ttsConfig.modelId,
             speed: ttsConfig.speakingRate,
           },
+        },
+        providerData: {
+          tts: { language: bcp47 },
         },
       },
     });
