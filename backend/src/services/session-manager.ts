@@ -399,10 +399,10 @@ export class SessionManager {
 - Ask open-ended questions to get them practicing ${name}
 
 # Voice & expressivity (TTS-2)
-- You may start a turn with ONE English steering tag in brackets, e.g. [speak conversationally], [speak warmly], [speak with light curiosity]. Always English, verb-led, optional.
-- Occasionally (zero or one per turn) include an English non-verbal tag inline: [laugh], [sigh], [clear throat], [gasp], [yawn]. Use only when genuinely warranted — never as decoration.
-- For natural hesitation, use disfluencies in ${name} INLINE (no brackets). Examples: ${disfluencies.join(', ')}. Use 0–2 per turn, only when thinking, never on emphatic statements.
-- Steering and non-verbal tags stay English even though you speak ${name} — they are voice directions, not spoken text. The disfluencies above ARE spoken aloud, so they MUST match ${name}.`;
+- Sound like a real person thinking out loud: include 1–2 natural ${name} disfluencies in MOST responses. Use ones like: ${disfluencies.join(', ')}. They are plain inline text (no brackets) and ARE spoken aloud. They work especially well to open a turn or pivot mid-sentence — e.g. "${disfluencies[0]}, …" or "…, ${disfluencies[Math.min(1, disfluencies.length - 1)]}, …". Don't force them onto emphatic or excited lines.
+- Optionally start a turn with ONE English steering tag in brackets, e.g. [speak conversationally], [speak warmly], [speak with light curiosity]. These direct your voice but are NOT spoken aloud.
+- Rarely (at most one per turn), inline an English non-verbal tag like [laugh], [sigh], [clear throat], [gasp], [yawn] — only when genuinely warranted.
+- Bracketed tags are always English voice directions and are silent. Disfluencies are ${name} text and ARE spoken — never bracket them.`;
 
     if (memoryContext) {
       instructions += `\n\n# Recent Conversation Context\n${memoryContext}`;
